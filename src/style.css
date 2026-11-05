@@ -19,7 +19,7 @@ html, body {
   height: 100%;
   background: var(--night);
   color: var(--text);
-  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-family: "Press Start 2P", ui-monospace, monospace;
   overflow: hidden;
   overscroll-behavior: none;
   touch-action: none;
@@ -61,27 +61,38 @@ html, body {
   flex: none;
 }
 
+/* Boutons « pixel » : bord en escalier, ombre portée nette, sans arrondi. */
 #bar button {
   font: inherit;
-  font-size: 13px;
+  font-size: 10px;
+  line-height: 1;
   color: var(--text);
   background: var(--night-2);
-  border: 2px solid #2b3768;
-  border-radius: 4px;
-  padding: 6px 12px;
+  border: none;
+  padding: 9px 12px 8px;
   cursor: pointer;
+  box-shadow:
+    0 -3px 0 0 #2b3768, 0 3px 0 0 #2b3768, -3px 0 0 0 #2b3768, 3px 0 0 0 #2b3768,
+    0 6px 0 0 #05060f;
+  margin: 0 4px;
 }
-#bar button:active { border-color: var(--lamp); }
+#bar button:hover { color: var(--lamp-soft); }
+#bar button:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 -3px 0 0 var(--lamp), 0 3px 0 0 var(--lamp), -3px 0 0 0 var(--lamp), 3px 0 0 0 var(--lamp);
+}
 kbd {
   font: inherit;
-  font-size: 11px;
+  font-size: 8px;
   color: var(--text-dim);
   margin-left: 4px;
 }
 
 #keys-hint {
-  margin: 4px 0 0;
-  font-size: 12px;
+  margin: 6px 0 0;
+  font-size: 8px;
+  line-height: 1.6;
   color: var(--text-dim);
 }
 
@@ -151,7 +162,8 @@ body.touch #pad {
   background: rgba(255, 179, 92, 0.12);
   color: var(--lamp-soft);
   font: inherit;
-  font-size: 15px;
+  font-size: 11px;
   touch-action: none;
+  box-shadow: 0 0 24px rgba(255, 179, 92, 0.25), inset 0 0 18px rgba(255, 179, 92, 0.15);
 }
 #btn-jump.pressed { background: rgba(255, 179, 92, 0.4); }

@@ -54,10 +54,18 @@ export class Game {
 
   render(alpha) {
     let overlay = null;
-    const hint = this.input.usedTouch ? 'Touchez pour continuer' : 'Espace pour continuer';
-    if (this.mode === 'won') overlay = { title: 'La porte s’ouvre.', hint };
-    else if (this.mode === 'end') overlay = { title: 'Fin de la phase 1. Merci !', hint: this.input.usedTouch ? 'Touchez pour recommencer' : 'Espace pour recommencer' };
-    // En pause d'écran de réussite, on n'interpole plus.
-    this.renderer.draw(this.session, this.mode === 'playing' ? alpha : 1, { overlay });
+    const touch = this.input.usedTouch;
+    if (this.mode === 'won') {
+      overlay = { title: 'La porte s\u2019ouvre.', hint: touch ? 'Touchez pour continuer' : 'Espace pour continuer' };
+    } else if (this.mode === 'end') {
+      overlay = { title: 'Fin de la démo. Merci !', hint: touch ? 'Touchez pour rejouer' : 'Espace pour rejouer' };
+    }
+    // Après la réussite : la lumière de la porte envahit doucement l'écran.
+    const fade = overlay ? Math.min(0.55, this.modeTicks / 50) : 0;
+    this.renderer.draw(this.session, this.mode === 'playing' ? alpha : 1, {
+      overlay,
+      overlayTicks: this.modeTicks,
+      fade,
+    });
   }
 }

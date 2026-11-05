@@ -44,11 +44,35 @@ src/sim/        simulation pure (aucun accès au DOM) : testable sous Node
   world.js      une tentative : pièce, boutons, portes, acteurs
   session.js    suite des tentatives, enregistrement, échos, chrono
 src/core/       boucle à pas fixe, entrées clavier / tactile
-src/render/     mise à l'échelle entière, rendu canvas (lit l'état, ne l'écrit jamais)
+src/render/     mise à l'échelle entière, pixel art, éclairage, interface (lit l'état, ne l'écrit jamais)
 src/levels/     un fichier JSON par pièce, et index.js pour l'ordre
 src/game.js     relie entrées, session et rendu
 tests/          tests node:test
 ```
+
+## Image
+
+Le pixel art est net : il est dessiné à la résolution interne (224 × 336) et agrandi
+d'un facteur entier, sans lissage. La lumière, elle, est douce : elle est calculée
+dans des calques lisses et composée à la résolution de l'écran.
+
+1. **Albedo** : la couleur des choses (fond, murs, décor, silhouette).
+2. **Carte de lumière** (multiplication) : ambiance de la pièce et sources (lampes,
+   lune, porte, voyants, échos), avec les ombres portées par le personnage.
+3. **Volumes** (addition) : cônes des lampes, rais de lune, reflets sur le sol
+   mouillé, brume, rayons de la porte de sortie.
+4. **Émissif** (net, addition) : ce qui brille par soi-même (ampoules, vitres,
+   étoiles, échos, liseré de lumière sur la silhouette, poussières dans la lumière).
+5. **Halo** : l'émissif réduit trois fois puis réagrandi (bloom).
+6. Vignette, puis l'interface en police pixel.
+
+Si l'appareil ne tient pas la cadence, le jeu passe tout seul en qualité basse : la
+composition se fait alors à la résolution interne (lumière « pixel »). On peut forcer
+la qualité avec `?qualite=haute` ou `?qualite=basse`.
+
+Les ambiances (`quai`, `hall`…) sont dans `src/render/themes.js`, les éléments de
+décor (`lamp`, `pendant`, `window`, `clock`, `poster`, `bench`, `canopy`, `facade`,
+`sign`) dans `src/render/decor.js`, la silhouette dans `src/render/sprites.js`.
 
 ## Simulation
 
@@ -68,6 +92,7 @@ Voir l'en-tête de `src/sim/level.js`. En bref :
 {
   "id": "hall",
   "name": "Le hall",
+  "theme": "hall",
   "narration": "Une phrase, affichée au début du niveau.",
   "duration": 10,
   "grid": ["##############", "#P..a.....1.E#", "…"],

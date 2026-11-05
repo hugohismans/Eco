@@ -1,339 +1,461 @@
-// Rendu provisoire (phase 1) : formes simples, palette nocturne.
+// Rendu : pixel art net + éclairage lisse.
 //
-// Le rendu ne fait que LIRE l'état de la session et du monde ; il ne modifie
-// jamais la simulation. Il interpole les positions entre deux ticks
-// (`alpha` ∈ [0, 1[) pour rester fluide sur les écrans à plus de 60 Hz.
+// Le rendu ne fait que LIRE la session et le monde ; il ne modifie jamais la
+// simulation. Il interpole les positions entre deux ticks (`alpha`) pour rester
+// fluide sur les écrans à plus de 60 Hz.
+//
+// Chaîne d'une image (voir aussi lighting.js) :
+//   pix   (albedo, net)     ──┐
+//   lumière (lisse)  × multiply
+//   volumes (lisse)  + lighter
+//   émissif (net)    + lighter
+//   halo (lisse)     + lighter
+//   vignette, puis interface (nette)
+// L'écran final est à la résolution de l'appareil : chaque pixel du jeu y est
+// un carré de N × N pixels, et la lumière, elle, y est parfaitement douce.
 
-import { TILE, SUB, GRID_W, GRID_H, TPS, T_SOLID, T_ONEWAY, DOOR_TICKS, MAX_ECHOES } from '../sim/constants.js';
-import { VIEW_W, VIEW_H, LEVEL_Y, HUD_H } from './screen.js';
+import { TILE, SUB, DOOR_TICKS } from '../sim/constants.js';
+import { C, ECHO_TINTS } from './palette.js';
+import { makeCanvas, rect, px } from './pixel.js';
+import { VIEW_W, VIEW_H, LEVEL_Y } from './screen.js';
+import { themeOf, paintTiles, floorRowBelow } from './themes.js';
+import { paintDecor } from './decor.js';
+import { Lighting } from './lighting.js';
+import { drawHud } from './hud.js';
+import { sprite, rimSprite, outlineSprite, WALK_CYCLE, SPRITE_DX } from './sprites.js';
 
-export const PALETTE = {
-  nightDeep: '#0b1026',
-  night: '#141d3f',
-  nightHigh: '#1f2b57',
-  hud: '#080c1d',
-  brick: '#4b2c2a',
-  brickDark: '#36201f',
-  wood: '#8a5a34',
-  woodLight: '#b07a46',
-  lamp: '#ffb35c',
-  lampSoft: '#ffd89a',
-  poster: '#d9c48a',
-  door: '#6a4429',
-  doorDark: '#4a2e1c',
-  text: '#f4e2c0',
-  textDim: '#8d93b8',
-  silhouette: '#07070e',
-};
-
-/** Teintes pâles des échos : bleu, rose, jaune, vert. */
-export const ECHO_TINTS = ['#9ec9ff', '#ffadd6', '#ffe08a', '#a6f0b6'];
-
-const TRAIL_LEN = 10;
-/** Durée d'affichage de la narration (ticks) et des fondus. */
-const NARRATION_TICKS = 5 * TPS;
-const NARRATION_FADE = 30;
+const TRAIL_LEN = 14;
+const TRAIL_EVERY = 2; // ticks entre deux échantillons de traînée
 
 export class Renderer {
   /** @param {HTMLCanvasElement} canvas */
   constructor(canvas) {
     this.canvas = canvas;
-    canvas.width = VIEW_W;
-    canvas.height = VIEW_H;
     this.ctx = canvas.getContext('2d', { alpha: false });
-    this.ctx.imageSmoothingEnabled = false;
-    this.staticLayer = null;
-    this.staticLevel = null;
+    this.scale = 1;
+    this.pix = makeCanvas(VIEW_W, VIEW_H);
+    this.emis = makeCanvas(VIEW_W, VIEW_H);
+    this.hud = makeCanvas(VIEW_W, VIEW_H);
+    this.lighting = new Lighting();
+    this.scene = null;
+    this.anim = new WeakMap();
     this.trails = new Map();
     this.trailWorld = null;
-    this.trailTick = -1;
+    this.lastTick = -1;
+    this.time = 0;
+    this.lastNow = performance.now();
+    this.resize(1);
   }
 
   /**
-   * Dessine une image complète.
+   * Taille de l'écran final. En qualité haute, on compose à la résolution de
+   * l'appareil (VIEW × scale) : lumière parfaitement douce. En qualité basse,
+   * on compose à la résolution interne et le navigateur agrandit sans lissage :
+   * la lumière devient elle aussi « pixel », mais tout reste fluide.
+   */
+  resize(scale, quality = this.quality ?? 'high') {
+    this.scale = scale;
+    this.quality = quality;
+    const k = quality === 'high' ? scale : 1;
+    if (this.canvas.width === VIEW_W * k && this.vignette) return;
+    this.canvas.width = VIEW_W * k;
+    this.canvas.height = VIEW_H * k;
+    this.vignette = buildVignette(VIEW_W * k, VIEW_H * k);
+  }
+
+  /**
    * @param {import('../sim/session.js').Session} session
    * @param {number} alpha fraction de tick écoulée depuis le dernier pas
-   * @param {{ overlay?: { title: string, hint: string } | null }} ui
+   * @param {{ overlay?: object|null, overlayTicks?: number, fade?: number }} ui
    */
   draw(session, alpha, ui = {}) {
-    const ctx = this.ctx;
+    const now = performance.now();
+    this.time += Math.min(0.1, (now - this.lastNow) / 1000);
+    this.lastNow = now;
+    const t = this.time;
     const world = session.world;
-    if (this.staticLevel !== session.level) this.buildStatic(session.level);
+    if (!this.scene || this.scene.level !== session.level) this.scene = buildScene(session.level);
+    const scene = this.scene;
+    const newTick = world.tick !== this.lastTick || this.trailWorld !== world;
+    this.lastTick = world.tick;
+    if (newTick) this.sampleAnimation(world);
 
-    ctx.drawImage(this.staticLayer, 0, 0);
-    ctx.save();
-    ctx.translate(0, LEVEL_Y);
-    this.drawExit(world.level.exit, world.tick);
-    for (const b of world.buttons) this.drawButton(b);
-    for (const d of world.doors) this.drawDoor(d);
-    this.drawActors(world, alpha);
-    ctx.restore();
+    // --- Calques nets ------------------------------------------------------
+    const P = this.pix.getContext('2d');
+    const E = this.emis.getContext('2d');
+    P.drawImage(scene.albedo, 0, 0);
+    E.clearRect(0, 0, VIEW_W, VIEW_H);
+    E.drawImage(scene.emissive, 0, 0);
+    this.drawStars(E, scene, t);
 
-    this.drawHud(session);
-    this.drawNarration(session);
-    if (ui.overlay) this.drawOverlay(ui.overlay);
-  }
+    const lights = [...scene.lights];
+    const volumes = [...scene.volumes];
+    this.drawExit(P, E, scene, world, t, lights);
+    for (const b of world.buttons) this.drawButton(P, E, b, lights);
+    for (const d of world.doors) this.drawDoor(P, E, d, lights);
 
-  // --- Décor fixe, dessiné une fois par niveau ----------------------------
+    const occluders = [];
+    this.drawActors(P, E, world, alpha, lights, occluders, t);
+    this.drawDust(E, volumes, t);
+    this.drawReplayRipple(E, session, world);
 
-  buildStatic(level) {
-    const layer = document.createElement('canvas');
-    layer.width = VIEW_W;
-    layer.height = VIEW_H;
-    const ctx = layer.getContext('2d');
+    // --- Lumière -------------------------------------------------------------
+    const L = this.lighting.buildLightMap(scene.theme.ambient, lights, occluders, t);
+    const V = this.lighting.buildVolumes(volumes, lights, scene.fog, t);
+    const [b1, b2, b3] = this.lighting.bloom(this.emis);
 
-    // Ciel nocturne en bandes (pas de dégradé lissé).
-    const bands = [PALETTE.nightDeep, PALETTE.night, PALETTE.nightHigh];
-    const bandH = Math.ceil(VIEW_H / bands.length);
-    bands.forEach((c, i) => {
-      ctx.fillStyle = c;
-      ctx.fillRect(0, i * bandH, VIEW_W, bandH);
-    });
+    // --- Composition à la résolution de l'écran ------------------------------
+    const D = this.ctx;
+    const W = this.canvas.width, H = this.canvas.height;
+    D.globalCompositeOperation = 'source-over';
+    D.globalAlpha = 1;
+    D.imageSmoothingEnabled = false;
+    D.drawImage(this.pix, 0, 0, W, H);
+    D.imageSmoothingEnabled = true;
+    D.imageSmoothingQuality = 'high';
+    D.globalCompositeOperation = 'multiply';
+    D.drawImage(L, 0, 0, W, H);
+    D.globalCompositeOperation = 'lighter';
+    D.drawImage(V, 0, 0, W, H);
+    D.imageSmoothingEnabled = false;
+    D.drawImage(this.emis, 0, 0, W, H);
+    D.imageSmoothingEnabled = true;
+    D.globalAlpha = 0.5;
+    D.drawImage(b1, 0, 0, W, H);
+    D.globalAlpha = 0.55;
+    D.drawImage(b2, 0, 0, W, H);
+    D.globalAlpha = 0.6;
+    D.drawImage(b3, 0, 0, W, H);
+    D.globalAlpha = 1;
+    D.globalCompositeOperation = 'source-over';
+    D.drawImage(this.vignette, 0, 0);
 
-    ctx.save();
-    ctx.translate(0, LEVEL_Y);
-    for (const d of level.decor) drawDecor(ctx, d);
-
-    for (let r = 0; r < GRID_H; r++) {
-      for (let c = 0; c < GRID_W; c++) {
-        const t = level.tiles[r * GRID_W + c];
-        const above = r > 0 ? level.tiles[(r - 1) * GRID_W + c] : T_SOLID;
-        const x = c * TILE, y = r * TILE;
-        if (t === T_SOLID) {
-          ctx.fillStyle = PALETTE.brick;
-          ctx.fillRect(x, y, TILE, TILE);
-          // Joints de briques décalés une rangée sur deux.
-          ctx.fillStyle = PALETTE.brickDark;
-          ctx.fillRect(x, y + 7, TILE, 1);
-          ctx.fillRect(x, y + 15, TILE, 1);
-          ctx.fillRect(x + ((r & 1) ? 4 : 11), y, 1, 7);
-          ctx.fillRect(x + ((r & 1) ? 11 : 4), y + 8, 1, 7);
-          if (above !== T_SOLID) {
-            // Bord de quai en bois là où l'on marche.
-            ctx.fillStyle = PALETTE.wood;
-            ctx.fillRect(x, y, TILE, 3);
-            ctx.fillStyle = PALETTE.woodLight;
-            ctx.fillRect(x, y, TILE, 1);
-          }
-        } else if (t === T_ONEWAY) {
-          ctx.fillStyle = PALETTE.wood;
-          ctx.fillRect(x, y, TILE, 3);
-          ctx.fillStyle = PALETTE.woodLight;
-          ctx.fillRect(x, y, TILE, 1);
-        }
-      }
+    // Fondus d'entrée de niveau et de sortie.
+    const fadeIn = Math.max(0, 1 - session.levelTick / 40);
+    const fade = Math.max(fadeIn, ui.fade ?? 0);
+    if (fade > 0) {
+      D.fillStyle = `rgba(5,6,15,${fade})`;
+      D.fillRect(0, 0, W, H);
     }
-    ctx.restore();
 
-    // Bandeaux haut et bas.
-    ctx.fillStyle = PALETTE.hud;
-    ctx.fillRect(0, 0, VIEW_W, HUD_H);
-    ctx.fillRect(0, LEVEL_Y + GRID_H * TILE, VIEW_W, VIEW_H);
-
-    this.staticLayer = layer;
-    this.staticLevel = level;
+    // Interface, nette, par-dessus tout.
+    drawHud(this.hud.getContext('2d'), session, ui);
+    D.imageSmoothingEnabled = false;
+    D.drawImage(this.hud, 0, 0, W, H);
   }
 
-  // --- Éléments dynamiques -------------------------------------------------
+  // --- Animation (échantillonnée une fois par tick) -------------------------
 
-  drawExit(ex, tick) {
-    const ctx = this.ctx;
-    const x = ex.x / SUB, y = ex.y / SUB, w = ex.w / SUB, h = ex.h / SUB;
-    // Encadrement de porte, lumière chaude qui respire doucement.
-    ctx.fillStyle = PALETTE.doorDark;
-    ctx.fillRect(x - 1, y - 2, w + 2, h + 2);
-    ctx.fillStyle = (tick >> 5) & 1 ? PALETTE.lamp : PALETTE.lampSoft;
-    ctx.fillRect(x + 1, y, w - 2, h);
-    ctx.fillStyle = PALETTE.lampSoft;
-    ctx.fillRect(x + 3, y + 2, w - 6, h - 2);
-  }
-
-  drawButton(b) {
-    const ctx = this.ctx;
-    const x = b.x / SUB, w = b.w / SUB;
-    const bottom = (b.y + b.h) / SUB;
-    ctx.fillStyle = PALETTE.brickDark;
-    ctx.fillRect(x, bottom - 1, w, 1);
-    const plateH = b.pressed ? 1 : 3;
-    ctx.fillStyle = b.pressed ? PALETTE.lampSoft : PALETTE.lamp;
-    ctx.fillRect(x + 1, bottom - 1 - plateH, w - 2, plateH);
-  }
-
-  drawDoor(d) {
-    const ctx = this.ctx;
-    const x = d.x / SUB, y = d.y / SUB, w = d.w / SUB, h = d.h / SUB;
-    const hidden = Math.floor((h * d.open) / DOOR_TICKS);
-    if (hidden >= h) return;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(x, y, w, h);
-    ctx.clip();
-    const py = y - hidden;
-    ctx.fillStyle = PALETTE.door;
-    ctx.fillRect(x + 2, py, w - 4, h);
-    ctx.fillStyle = PALETTE.doorDark;
-    for (let k = 4; k < h; k += 6) ctx.fillRect(x + 2, py + k, w - 4, 1);
-    ctx.fillRect(x + 2, py, 1, h);
-    ctx.fillRect(x + w - 3, py, 1, h);
-    ctx.restore();
-  }
-
-  drawActors(world, alpha) {
-    const ctx = this.ctx;
-    // Traînées des échos, échantillonnées à chaque nouveau tick.
+  sampleAnimation(world) {
     if (this.trailWorld !== world) {
       this.trails.clear();
       this.trailWorld = world;
-      this.trailTick = -1;
     }
-    if (world.tick !== this.trailTick) {
-      this.trailTick = world.tick;
-      for (const a of world.actors) {
-        if (a.kind !== 'echo') continue;
-        let t = this.trails.get(a);
-        if (!t) this.trails.set(a, (t = []));
-        t.push([a.x, a.y]);
-        if (t.length > TRAIL_LEN) t.shift();
-      }
-    }
-
     for (const a of world.actors) {
-      const x = Math.round((a.prevX + (a.x - a.prevX) * alpha) / SUB);
-      const y = Math.round((a.prevY + (a.y - a.prevY) * alpha) / SUB);
-      if (a.kind === 'echo') {
-        const tint = ECHO_TINTS[(a.attempt - 1) % ECHO_TINTS.length];
-        const trail = this.trails.get(a) ?? [];
-        trail.forEach(([tx, ty], i) => {
-          ctx.globalAlpha = 0.04 + (0.16 * i) / TRAIL_LEN;
-          drawSilhouette(ctx, Math.round(tx / SUB), Math.round(ty / SUB), a, tint, world.tick);
-        });
-        ctx.globalAlpha = a.finished ? 0.35 : 0.6;
-        drawSilhouette(ctx, x, y, a, tint, world.tick);
-        ctx.globalAlpha = 1;
-      } else {
-        drawSilhouette(ctx, x, y, a, PALETTE.silhouette, world.tick);
+      let s = this.anim.get(a);
+      if (!s) this.anim.set(a, (s = { walk: 0, land: 0, wasGround: true, scarf: 0 }));
+      if (a.onGround && !s.wasGround && a.vy === 0) s.land = 6;
+      else if (s.land > 0) s.land--;
+      s.wasGround = a.onGround;
+      if (a.onGround) s.walk += Math.abs(a.dx);
+      s.scarf += (Math.abs(a.vx) - s.scarf) * 0.15;
+      if (a.kind === 'echo' && world.tick % TRAIL_EVERY === 0) {
+        let tr = this.trails.get(a);
+        if (!tr) this.trails.set(a, (tr = []));
+        tr.push({ x: a.x, y: a.y, frame: this.frameOf(a, world.tick), facing: a.facing });
+        if (tr.length > TRAIL_LEN) tr.shift();
       }
     }
   }
 
-  // --- Interface -----------------------------------------------------------
+  frameOf(a, tick) {
+    const s = this.anim.get(a);
+    if (!a.onGround) return a.vy < 0 ? 'jump' : 'fall';
+    if (s && s.land > 0) return 'land';
+    if (Math.abs(a.vx) > 3) return WALK_CYCLE[Math.floor((s?.walk ?? 0) / (7 * SUB)) % WALK_CYCLE.length];
+    return (tick % 100) < 55 ? 'idleA' : 'idleB';
+  }
 
-  drawHud(session) {
-    const ctx = this.ctx;
-    // Chrono : une barre qui se vide.
-    const left = session.ticksLeft;
-    const barX = 4, barY = 4, barW = VIEW_W - 8, barH = 4;
-    ctx.fillStyle = PALETTE.nightHigh;
-    ctx.fillRect(barX, barY, barW, barH);
-    if (left != null) {
-      const fill = Math.ceil((barW * left) / session.level.duration);
-      const urgent = left < 3 * TPS && ((left >> 3) & 1);
-      ctx.fillStyle = urgent ? PALETTE.lampSoft : PALETTE.lamp;
-      ctx.fillRect(barX, barY, fill, barH);
+  // --- Acteurs -----------------------------------------------------------------
+
+  drawActors(P, E, world, alpha, lights, occluders, t) {
+    // Échos d'abord (traînées, puis silhouettes lumineuses), le joueur ensuite.
+    for (const a of world.actors) {
+      if (a.kind !== 'echo') continue;
+      const tint = ECHO_TINTS[(a.attempt - 1) % ECHO_TINTS.length];
+      const trail = this.trails.get(a) ?? [];
+      trail.forEach((p, i) => {
+        E.globalAlpha = 0.035 + (0.16 * i) / TRAIL_LEN;
+        E.drawImage(sprite(p.frame, p.facing, tint), Math.round(p.x / SUB) + SPRITE_DX, Math.round(p.y / SUB) + LEVEL_Y);
+      });
+      const { x, y } = lerpPos(a, alpha);
+      const frame = this.frameOf(a, world.tick);
+      const pulse = a.finished ? 0.2 + 0.06 * Math.sin(t * 3) : 0.36;
+      E.globalAlpha = pulse;
+      E.drawImage(sprite(frame, a.facing, tint), x + SPRITE_DX, y + LEVEL_Y);
+      E.globalAlpha = pulse * 0.45;
+      E.drawImage(outlineSprite(frame, a.facing, tint), x + SPRITE_DX - 1, y + LEVEL_Y - 1);
+      E.globalAlpha = 1;
+      this.drawScarf(E, a, x, y, tint, pulse * 0.9, t);
+      // Un écho éclaire faiblement autour de lui.
+      lights.push({ x: x + 5, y: y + LEVEL_Y + 9, r: 30, color: tint, intensity: a.finished ? 0.25 : 0.45, flicker: 0, shadows: false, halo: 0.5 });
     }
 
-    ctx.font = '8px monospace';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = PALETTE.text;
-    ctx.textAlign = 'left';
-    ctx.fillText(`ESSAI ${session.attemptCount}`, 4, 12);
-    ctx.textAlign = 'right';
-    const echoes = session.world.actors.length - 1;
-    ctx.fillText(`ÉCHOS ${echoes}/${MAX_ECHOES}`, VIEW_W - 4, 12);
-    ctx.textAlign = 'center';
-    ctx.fillStyle = PALETTE.textDim;
-    ctx.fillText(session.level.name, VIEW_W / 2, 12);
+    const p = world.player;
+    const { x, y } = lerpPos(p, alpha);
+    const sx = x + SPRITE_DX, sy = y + LEVEL_Y;
+    const frame = this.frameOf(p, world.tick);
+    // Ombre de contact au sol.
+    if (p.onGround) {
+      rect(P, x - 1, sy + 21, 12, 1, 'rgba(5,6,15,0.55)');
+      rect(P, x + 1, sy + 22, 8, 1, 'rgba(5,6,15,0.35)');
+    }
+    P.drawImage(sprite(frame, p.facing, C.silhouette), sx, sy);
+    this.drawScarf(P, p, x, y, C.silhouette, 1, t);
+    occluders.push({ x: x + 1, y: sy + 1, w: p.w / SUB - 2, h: p.h / SUB - 1 });
+
+    // Liseré de lumière du côté de la source la plus forte.
+    let best = null, bestI = 0;
+    const cx = x + 5, cy = sy + 8;
+    for (const L of lights) {
+      if (L.color === undefined || L.r < 40) continue;
+      const d = Math.hypot(L.x - cx, L.y - cy);
+      if (d >= L.r) continue;
+      const I = L.intensity * (1 - d / L.r) ** 1.4;
+      if (I > bestI) { bestI = I; best = L; }
+    }
+    const warmSide = best ? (best.x < cx ? -1 : 1) : 1;
+    // Liseré froid permanent (la nuit, la lune) : la silhouette reste lisible partout.
+    E.globalAlpha = 0.24;
+    E.drawImage(rimSprite(frame, p.facing, -warmSide, C.moon0), sx, sy);
+    if (best && bestI > 0.04) {
+      E.globalAlpha = Math.min(0.9, bestI * 1.6);
+      E.drawImage(rimSprite(frame, p.facing, warmSide, C.rim), sx, sy);
+    }
+    E.globalAlpha = 1;
   }
 
-  drawNarration(session) {
-    const t = session.levelTick;
-    const text = session.level.narration;
-    if (!text || t >= NARRATION_TICKS) return;
-    const a = Math.min(1, t / NARRATION_FADE, (NARRATION_TICKS - t) / NARRATION_FADE);
-    const ctx = this.ctx;
-    ctx.globalAlpha = Math.max(0, a);
-    ctx.font = '8px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = PALETTE.text;
-    ctx.fillText(text, VIEW_W / 2, VIEW_H - 12, VIEW_W - 8);
+  /** Écharpe : trois pixels qui flottent derrière, au gré de l'allure et du vent. */
+  drawScarf(ctx, a, x, y, color, alpha, t) {
+    const s = this.anim.get(a);
+    const speed = s ? Math.min(1, s.scarf / 20) : 0;
+    const back = -a.facing;
+    const ax = x + 5 + back * 2;
+    const ay = y + LEVEL_Y + 7;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+    for (let i = 1; i <= 4; i++) {
+      const wave = Math.sin(t * 6 + i * 1.3 + a.index) * (0.4 + speed);
+      const sag = (1 - speed) * i * 0.9;
+      const lx = Math.round(ax + back * i * (0.6 + speed * 0.9));
+      const ly = Math.round(ay + sag + wave * 0.8 - speed * 0.5);
+      ctx.fillRect(lx, ly, 1, i < 3 ? 2 : 1);
+    }
     ctx.globalAlpha = 1;
   }
 
-  drawOverlay({ title, hint }) {
-    const ctx = this.ctx;
-    ctx.globalAlpha = 0.7;
-    ctx.fillStyle = PALETTE.nightDeep;
-    ctx.fillRect(0, LEVEL_Y, VIEW_W, GRID_H * TILE);
-    ctx.globalAlpha = 1;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = '8px monospace';
-    ctx.fillStyle = PALETTE.lampSoft;
-    ctx.fillText(title, VIEW_W / 2, VIEW_H / 2 - 8);
-    ctx.fillStyle = PALETTE.textDim;
-    ctx.fillText(hint, VIEW_W / 2, VIEW_H / 2 + 8, VIEW_W - 8);
+  // --- Mécanismes -------------------------------------------------------------
+
+  drawExit(P, E, scene, world, t, lights) {
+    const ex = world.level.exit;
+    const x = ex.x / SUB, y = ex.y / SUB + LEVEL_Y, w = ex.w / SUB, h = ex.h / SUB;
+    const pulse = 0.85 + 0.15 * Math.sin(t * 1.4);
+    // Intérieur lumineux (émissif) : une pièce chaude derrière la porte.
+    rect(E, x + 1, y, w - 2, h, C.lamp0);
+    rect(E, x + 2, y + 2, w - 4, h - 2, C.lamp1);
+    E.globalAlpha = 0.45 + 0.35 * pulse;
+    rect(E, x + 4, y + 5, w - 8, h - 7, C.lamp2);
+    E.globalAlpha = 1;
+    // Silhouette d'un chambranle intérieur, pour la profondeur.
+    rect(E, x + w - 4, y + 2, 1, h - 2, C.lamp0);
+    lights.push({ x: x + w / 2, y: y + h * 0.55, r: 64, color: C.lamp2, intensity: 0.65 * pulse, flicker: 0, shadows: true, halo: 0.45 });
+  }
+
+  drawButton(P, E, b, lights) {
+    const x = b.x / SUB, w = b.w / SUB;
+    const bottom = (b.y + b.h) / SUB + LEVEL_Y;
+    // Socle de laiton encastré, plateau qui s'enfonce.
+    rect(P, x - 1, bottom - 2, w + 2, 2, C.iron1);
+    const plateH = b.pressed ? 1 : 3;
+    rect(P, x + 1, bottom - 2 - plateH, w - 2, plateH, C.brass);
+    rect(P, x + 1, bottom - 2 - plateH, w - 2, 1, C.paper3);
+    // Voyant : rouge au repos, vert quand on appuie.
+    const col = b.pressed ? C.signalGreen : C.signalRed;
+    rect(E, x + (w >> 1) - 1, bottom - 2, 2, 1, col);
+    lights.push({ x: x + w / 2, y: bottom - 3, r: b.pressed ? 26 : 14, color: col, intensity: b.pressed ? 0.6 : 0.3, flicker: 0, shadows: false, halo: 0.6 });
+  }
+
+  drawDoor(P, E, d, lights) {
+    const x = d.x / SUB, y = d.y / SUB + LEVEL_Y, w = d.w / SUB, h = d.h / SUB;
+    const hidden = Math.floor((h * d.open) / DOOR_TICKS);
+    // Rideau de fer à lames, qui remonte dans le mur.
+    if (hidden < h) {
+      P.save();
+      P.beginPath();
+      P.rect(x, y, w, h);
+      P.clip();
+      const py = y - hidden;
+      rect(P, x + 1, py, w - 2, h, C.iron2);
+      for (let k = 0; k < h; k += 3) {
+        rect(P, x + 1, py + k, w - 2, 1, C.stone3);
+        rect(P, x + 1, py + k + 2, w - 2, 1, C.iron1);
+      }
+      rect(P, x + 1, py + h - 2, w - 2, 2, C.brass);
+      rect(P, x, py, 1, h, C.iron0);
+      rect(P, x + w - 1, py, 1, h, C.iron0);
+      P.restore();
+    }
+    // Rails latéraux.
+    rect(P, x, y, 1, h, C.iron1);
+    rect(P, x + w - 1, y, 1, h, C.iron1);
+    // Feu de signal au-dessus de la porte.
+    const open = d.target;
+    const col = open ? C.signalGreen : C.signalRed;
+    const sx = x + (w >> 1) - 2, sy = y - 6;
+    rect(P, sx - 1, sy - 1, 6, 5, C.iron0);
+    rect(E, sx, sy, 4, 3, col);
+    px(E, sx + 1, sy, '#ffffff');
+    lights.push({ x: sx + 2, y: sy + 1, r: 34, color: col, intensity: 0.55, flicker: 0, shadows: false, halo: 0.9 });
+  }
+
+  // --- Petits effets -------------------------------------------------------------
+
+  drawStars(E, scene, t) {
+    for (const s of scene.twinkles) {
+      const a = 0.5 + 0.5 * Math.sin(t * s.speed + s.phase);
+      E.globalAlpha = a;
+      px(E, s.x, s.y, C.moon2);
+    }
+    E.globalAlpha = 1;
+  }
+
+  /** Poussières en suspension dans les faisceaux : des pixels nets, qui dérivent. */
+  drawDust(E, volumes, t) {
+    for (let vi = 0; vi < volumes.length; vi++) {
+      const v = volumes[vi];
+      if (!v.dust) continue;
+      for (let i = 0; i < v.dust; i++) {
+        const seed = (vi * 97 + i * 31) % 1000 / 1000;
+        const u = (seed * 7.31 + t * (0.025 + seed * 0.02)) % 1;
+        const y0 = v.type === 'cone' ? v.y0 : v.y0;
+        const y1 = v.y1;
+        const y = y0 + (y1 - y0) * u;
+        let xc, half;
+        if (v.type === 'cone') {
+          xc = v.x;
+          half = (v.w0 + (v.w1 - v.w0) * u) * 0.35;
+        } else {
+          xc = (v.x0 + v.x1) / 2 + (y - v.y0) * v.slant;
+          half = (v.x1 - v.x0) * 0.45;
+        }
+        const x = xc + Math.sin(seed * 40 + t * 0.6) * half;
+        const a = Math.sin(u * Math.PI) * (0.35 + 0.35 * Math.sin(t * 2 + seed * 20));
+        if (a <= 0.05) continue;
+        E.globalAlpha = a;
+        px(E, Math.round(x), Math.round(y), v.type === 'shaft' ? C.moon2 : C.lamp4);
+      }
+    }
+    E.globalAlpha = 1;
+  }
+
+  /** Au début d'une nouvelle tentative : une onde part du point de départ. */
+  drawReplayRipple(E, session, world) {
+    if (session.attemptCount < 2 || world.tick > 30) return;
+    const sp = world.level.spawn;
+    const cx = sp.x / SUB + 5, cy = sp.y / SUB + LEVEL_Y + 11;
+    const r = 4 + world.tick * 2.2;
+    const a = 1 - world.tick / 30;
+    E.globalAlpha = a * 0.8;
+    E.fillStyle = C.moon1;
+    // Cercle en pixels (algorithme du point milieu), net.
+    let x = Math.round(r), y = 0, err = 1 - x;
+    while (x >= y) {
+      for (const [dx, dy] of [[x, y], [y, x], [-y, x], [-x, y], [-x, -y], [-y, -x], [y, -x], [x, -y]]) {
+        E.fillRect(Math.round(cx + dx), Math.round(cy + dy), 1, 1);
+      }
+      y++;
+      if (err < 0) err += 2 * y + 1;
+      else { x--; err += 2 * (y - x) + 1; }
+    }
+    E.globalAlpha = 1;
   }
 }
 
-/**
- * Silhouette provisoire : tête ronde, corps, jambes qui alternent en marchant.
- * (x, y) = coin haut-gauche de la boîte de collision, en pixels.
- */
-function drawSilhouette(ctx, x, y, a, color, tick) {
-  ctx.fillStyle = color;
-  const w = a.w / SUB, h = a.h / SUB;
-  // Tête.
-  ctx.fillRect(x + 3, y, 4, 1);
-  ctx.fillRect(x + 2, y + 1, 6, 5);
-  ctx.fillRect(x + 3, y + 6, 4, 1);
-  // Corps.
-  ctx.fillRect(x + 1, y + 7, w - 2, 9);
-  // Jambes.
-  const walking = a.onGround && a.vx !== 0;
-  const step = walking ? (tick >> 3) & 1 : 0;
-  const airborne = !a.onGround;
-  if (airborne) {
-    ctx.fillRect(x + 2, y + 16, 3, 4);
-    ctx.fillRect(x + 6, y + 16, 3, 5);
-  } else {
-    ctx.fillRect(x + 2, y + 16, 3, h - 16 - step);
-    ctx.fillRect(x + 5 + (a.facing > 0 ? 1 : 0), y + 16, 3, h - 16 - (1 - step) * (walking ? 1 : 0));
-  }
+/** Position interpolée, en pixels (coin haut-gauche de la boîte). */
+function lerpPos(a, alpha) {
+  return {
+    x: Math.round((a.prevX + (a.x - a.prevX) * alpha) / SUB),
+    y: Math.round((a.prevY + (a.y - a.prevY) * alpha) / SUB),
+  };
 }
 
-/** Éléments de décor (sans effet sur la simulation). */
-function drawDecor(ctx, d) {
-  const x = d.col * TILE, y = d.row * TILE;
-  if (d.type === 'bench') {
-    // Banc posé sur le sol de la case (row = case où il se trouve).
-    ctx.fillStyle = PALETTE.wood;
-    ctx.fillRect(x - 6, y + 8, 28, 2);
-    ctx.fillRect(x - 6, y + 3, 28, 2);
-    ctx.fillStyle = PALETTE.doorDark;
-    ctx.fillRect(x - 4, y + 10, 2, 6);
-    ctx.fillRect(x + 18, y + 10, 2, 6);
-    ctx.fillRect(x - 4, y + 5, 1, 3);
-    ctx.fillRect(x + 19, y + 5, 1, 3);
-  } else if (d.type === 'lamp') {
-    // Réverbère : halo chaud en anneaux, mât jusqu'au sol.
-    ctx.globalAlpha = 0.12;
-    ctx.fillStyle = PALETTE.lamp;
-    ctx.fillRect(x - 10, y - 6, 36, 28);
-    ctx.globalAlpha = 0.18;
-    ctx.fillRect(x - 4, y - 2, 24, 18);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = PALETTE.lampSoft;
-    ctx.fillRect(x + 5, y + 2, 6, 4);
-    ctx.fillStyle = PALETTE.brickDark;
-    ctx.fillRect(x + 4, y, 8, 2);
-    ctx.fillRect(x + 7, y + 6, 2, 200);
-  } else if (d.type === 'clock') {
-    ctx.fillStyle = PALETTE.poster;
-    ctx.fillRect(x + 2, y, 12, 12);
-    ctx.fillRect(x, y + 2, 16, 8);
-    ctx.fillStyle = PALETTE.doorDark;
-    ctx.fillRect(x + 7, y + 2, 2, 5);
-    ctx.fillRect(x + 7, y + 6, 4, 1);
+/** Tout ce qui ne bouge pas dans une pièce, peint une seule fois. */
+function buildScene(level) {
+  const theme = themeOf(level);
+  const albedo = makeCanvas(VIEW_W, VIEW_H);
+  const emissive = makeCanvas(VIEW_W, VIEW_H);
+  const A = albedo.getContext('2d');
+  const Em = emissive.getContext('2d');
+  const out = { lights: [], volumes: [] };
+
+  // Le fond lointain (ciel, étoiles, ville) a son propre calque émissif :
+  // on n'en garde que ce qui reste visible une fois le décor et les murs posés.
+  const far = makeCanvas(VIEW_W, VIEW_H);
+  const farCtx = far.getContext('2d');
+  theme.backdrop(level, A, farCtx, out.lights);
+  const before = A.getImageData(0, 0, VIEW_W, VIEW_H).data;
+  paintDecor(level, A, Em, out);
+  paintTiles(level, theme, A);
+  const after = A.getImageData(0, 0, VIEW_W, VIEW_H).data;
+  const visible = new Uint8Array(VIEW_W * VIEW_H);
+  const farImg = farCtx.getImageData(0, 0, VIEW_W, VIEW_H);
+  for (let i = 0; i < visible.length; i++) {
+    const k = i * 4;
+    visible[i] = before[k] === after[k] && before[k + 1] === after[k + 1] && before[k + 2] === after[k + 2] ? 1 : 0;
+    if (!visible[i]) farImg.data[k + 3] = 0;
   }
+  farCtx.putImageData(farImg, 0, 0);
+  Em.globalCompositeOperation = 'destination-over';
+  Em.drawImage(far, 0, 0);
+  Em.globalCompositeOperation = 'source-over';
+
+  // Encadrement de la sortie (bois) et rayons qui s'en échappent.
+  const ex = level.exit;
+  const x = ex.x / SUB, y = ex.y / SUB + LEVEL_Y, w = ex.w / SUB, h = ex.h / SUB;
+  rect(A, x - 2, y - 3, w + 4, h + 3, C.wood1);
+  rect(A, x - 1, y - 2, w + 2, h + 2, C.wood3);
+  rect(A, x - 2, y - 3, w + 4, 1, C.wood4);
+  rect(A, x, y, w, h, C.ink);
+  out.volumes.push({ type: 'rays', x: x + w / 2, y: y + h - 2, len: 46, color: C.lamp3, alpha: 0.12, pulse: true });
+  out.volumes.push({ type: 'reflect', x: x + w / 2, y: y + h, w: w + 6, h: 10, color: C.lamp3, alpha: 0.35 });
+
+  // Étoiles qui scintillent (prises parmi les pixels clairs du ciel).
+  const twinkles = [];
+  if (level.theme === 'quai') {
+    for (let i = 0; i < 18; i++) {
+      const s = { x: (i * 53 + 17) % VIEW_W, y: 6 + ((i * 37) % 150), speed: 1 + (i % 4) * 0.7, phase: i * 1.9 };
+      if (visible[s.y * VIEW_W + s.x]) twinkles.push(s);
+    }
+  }
+
+  // Ligne de sol moyenne pour la brume.
+  let floorSum = 0;
+  for (let c = 0; c < level.width; c++) floorSum += floorRowBelow(level, c, 0);
+  const fog = theme.fog ? { ...theme.fog, floorY: LEVEL_Y + (floorSum / level.width) * TILE } : null;
+
+  return { level, theme, albedo, emissive, lights: out.lights, volumes: out.volumes, twinkles, fog };
 }
+
+function buildVignette(w, h) {
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(w / 2, h * 0.45, Math.min(w, h) * 0.35, w / 2, h * 0.45, Math.max(w, h) * 0.75);
+  g.addColorStop(0, 'rgba(5,6,15,0)');
+  g.addColorStop(1, 'rgba(5,6,15,0.6)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+  return c;
+}
+

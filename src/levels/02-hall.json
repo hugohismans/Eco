@@ -1,6 +1,7 @@
 {
   "id": "hall",
   "name": "Le hall",
+  "theme": "hall",
   "narration": "Quelqu'un attendait déjà ici. (provisoire)",
   "duration": 10,
   "grid": [
@@ -23,12 +24,15 @@
     "##############",
     "##############"
   ],
-  "doors": {
-    "1": { "buttons": ["a"], "mode": "and" }
-  },
+  "doors": {"1": {"buttons": ["a"], "mode": "and"}},
   "decor": [
-    { "type": "clock", "col": 5, "row": 6 },
-    { "type": "lamp", "col": 3, "row": 9 },
-    { "type": "lamp", "col": 8, "row": 9 }
+    {"type": "window", "col": 3, "row": 4, "cols": 2, "rows": 5},
+    {"type": "window", "col": 7, "row": 4, "cols": 2, "rows": 5},
+    {"type": "clock", "col": 5, "row": 2},
+    {"type": "pendant", "col": 1, "row": 8},
+    {"type": "pendant", "col": 6, "row": 8},
+    {"type": "poster", "col": 1, "row": 11, "cols": 1, "rows": 2, "variant": "train"},
+    {"type": "poster", "col": 8, "row": 11, "cols": 1, "rows": 2, "variant": "mer"},
+    {"type": "bench", "col": 6, "row": 15}
   ]
 }

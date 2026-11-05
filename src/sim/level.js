@@ -7,6 +7,7 @@
 //   "narration": "…",             la phrase affichée au début du niveau
 //   "duration": 10,               durée d'une tentative en secondes (null = sans chrono)
 //   "grid": ["##############", …] GRID_H lignes de GRID_W caractères
+//   "theme": "hall",              ambiance visuelle (quai, hall…)
 //   "doors": { "1": { "buttons": ["a", "b"], "mode": "and" } },
 //   "decor": [ { "type": "bench", "col": 3, "row": 14 } ]   (purement visuel)
 // }
@@ -111,6 +112,7 @@ export function parseLevel(def) {
   return Object.freeze({
     id: def.id,
     name: def.name ?? def.id,
+    theme: def.theme ?? 'hall',
     narration: def.narration ?? '',
     /** Durée d'une tentative en ticks, ou null pour « sans chrono ». */
     duration: def.duration == null ? null : Math.round(def.duration * TPS),
