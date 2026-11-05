@@ -76,7 +76,7 @@ export function drawHud(ctx, session, ui) {
     ctx.globalAlpha = Math.max(0, a);
     const name = session.level.name.toUpperCase();
     const s = textSprite(name, C.lamp3);
-    ctx.drawImage(s, Math.round((VIEW_W - s.width) / 2), 30);
+    ctx.drawImage(s, Math.round((VIEW_W - s.width) / 2), 24);
     ctx.globalAlpha = 1;
   }
 
@@ -88,7 +88,7 @@ export function drawHud(ctx, session, ui) {
 /** La phrase du niveau : écrite lettre à lettre en bas de l'écran, puis fondue. */
 function drawNarration(ctx, text, t, B) {
   if (!text) return;
-  const lines = wrapText(text, 26);
+  const lines = wrapText(text, Math.floor(VIEW_W / GLYPH) - 4);
   const total = lines.reduce((n, l) => n + l.length, 0);
   const typed = Math.floor((t - NARRATION_START) / NARRATION_TYPE);
   const end = NARRATION_START + total * NARRATION_TYPE + NARRATION_HOLD;
@@ -156,7 +156,7 @@ function drawTeach(ctx, ability, t, touch) {
   const a = Math.min(1, t / 30, (9 * TPS - t) / 40);
   const lines = touch ? card.touch : card.keys;
   const w = 26 * GLYPH - 16, h = 22 + lines.length * 10;
-  const x = Math.round((VIEW_W - w) / 2), y = 44;
+  const x = Math.round((VIEW_W - w) / 2), y = 36;
   ctx.globalAlpha = Math.max(0, a) * 0.92;
   rect(ctx, x, y, w, h, 'rgba(5,6,15,0.82)');
   rect(ctx, x, y, w, 1, C.lamp1);

@@ -130,12 +130,15 @@ export function themeOf(level) {
 /** Ciel nocturne, étoiles, lune, collines et lumières de la ville. */
 function paintSky(level, A, Em, lights, theme, B = SCENE) {
   const r = rng(7);
+  // Repères dessinés pour une scène de 224 × 336, adaptés à la scène actuelle.
+  const KY = VIEW_H / 336, KX = VIEW_W / 224;
+  const Y = (v) => Math.round(v * KY), X = (v) => Math.round(v * KX);
   // Ciel en bandes tramées (pas de dégradé lisse : c'est la lumière qui l'est).
   const bands = [
     [0, C.night3],
-    [70, C.night4],
-    [140, C.night5],
-    [200, '#5a6aa8'],
+    [Y(70), C.night4],
+    [Y(140), C.night5],
+    [Y(200), '#5a6aa8'],
   ];
   for (let i = 0; i < bands.length; i++) {
     const y0 = i === 0 ? B.y0 : bands[i][0];
@@ -148,16 +151,16 @@ function paintSky(level, A, Em, lights, theme, B = SCENE) {
     }
   }
   // Voiles de nuages.
-  for (const [cx, cy, w] of [[40, 52, 70], [150, 30, 90], [110, 96, 60], [200, 120, 50]]) {
+  for (const [cx, cy, w] of [[X(40), Y(52), 70], [X(150), Y(30), 90], [X(110), Y(96), 60], [X(200), Y(120), 50]]) {
     sparse(A, cx - w / 2, cy, w, 3, C.night5, 1);
     checker(A, cx - w / 3, cy + 1, (w * 2) / 3, 2, C.night5);
     rect(A, cx - w / 5, cy + 1, w / 2.5, 1, '#5a6aa8');
   }
   // Étoiles (émissives : elles ne dépendent pas de l'éclairage).
-  const nStars = Math.round((60 * B.w * (180 - B.y0)) / (VIEW_W * 180));
+  const nStars = Math.round((60 * B.w * (Y(180) - B.y0)) / (224 * 180));
   for (let i = 0; i < nStars; i++) {
     const x = Math.floor(B.x0 + r() * B.w);
-    const y = Math.floor(B.y0 + r() * (180 - B.y0));
+    const y = Math.floor(B.y0 + r() * (Y(180) - B.y0));
     const b = r();
     px(Em, x, y, b > 0.8 ? C.moon2 : b > 0.4 ? C.moon1 : C.moon0);
     if (b > 0.94) {
@@ -166,7 +169,7 @@ function paintSky(level, A, Em, lights, theme, B = SCENE) {
     }
   }
   // Lune.
-  const mx = 178, my = 46;
+  const mx = X(178), my = Y(46);
   for (let y = -8; y <= 8; y++) {
     for (let x = -8; x <= 8; x++) {
       const d = x * x + y * y;
@@ -177,14 +180,14 @@ function paintSky(level, A, Em, lights, theme, B = SCENE) {
   lights.push({ x: mx, y: my, r: 120, color: C.moon1, intensity: 0.28, flicker: 0, halo: 0.5 });
 
   // Collines lointaines et ville.
-  const hillTop = (x) => 214 + Math.round(6 * Math.sin(x / 23) + 4 * Math.sin(x / 9 + 1));
+  const hillTop = (x) => Y(214) + Math.round(6 * Math.sin(x / 23) + 4 * Math.sin(x / 9 + 1));
   for (let x = B.x0; x < B.x1; x++) rect(A, x, hillTop(x), 1, B.y1 - hillTop(x), C.night2);
   for (let x = B.x0; x < B.x1; x += 1) if ((((x * 7) % 5) + 5) % 5 === 0) px(A, x, hillTop(x) - 1, C.night3);
   let x = B.x0 + 4;
   while (x < B.x1) {
     const w = 6 + Math.floor(r() * 10);
     const h = 6 + Math.floor(r() * 16);
-    const base = 236;
+    const base = Y(236);
     rect(A, x, base - h, w, h + 40, C.night1);
     for (let wy = base - h + 2; wy < base - 1; wy += 3) {
       for (let wx = x + 1; wx < x + w - 1; wx += 2) {
@@ -194,9 +197,9 @@ function paintSky(level, A, Em, lights, theme, B = SCENE) {
     x += w + 1 + Math.floor(r() * 6);
   }
   // Pylône et caténaire au loin.
-  for (let y = 196; y < 236; y++) px(A, 30, y, C.night1);
-  rect(A, 26, 198, 9, 1, C.night1);
-  for (let x2 = B.x0; x2 < B.x1; x2++) px(A, x2, 199 + Math.round(3 * Math.cos((x2 - 30) / 60)), C.night2);
+  for (let y = Y(196); y < Y(236); y++) px(A, X(30), y, C.night1);
+  rect(A, X(30) - 4, Y(198), 9, 1, C.night1);
+  for (let x2 = B.x0; x2 < B.x1; x2++) px(A, x2, Y(199) + Math.round(3 * Math.cos((x2 - X(30)) / 60)), C.night2);
 }
 
 /** Intérieur : enduit ocre, pilastres de briques, lambris et corniches. */

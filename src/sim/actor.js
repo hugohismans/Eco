@@ -260,12 +260,18 @@ function stepClimb(world, a, side, dir, vdir, can) {
   if (a.jumpBuffer > 0) {
     if (dir === -side && can.has('walljump')) {
       wallJump(world, a, -side);
-    } else {
+    } else if (a.stamina >= STAMINA_CLIMBJUMP) {
       // Saut vertical le long du mur : coûteux en endurance.
       startJump(world, a, 'jump');
       a.stamina -= STAMINA_CLIMBJUMP;
       a.climbing = false;
       a.grabLock = GRAB_LOCK;
+    } else {
+      // Trop fatigué pour sauter le long du mur : on reste accroché.
+      a.jumpBuffer = 0;
+      a.vy = 0;
+      world.emit('tired', a);
+      return;
     }
     a.vy = Math.min(a.vy + GRAVITY, MAX_FALL);
     moveHorizontal(world, a);

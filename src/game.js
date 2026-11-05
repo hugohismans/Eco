@@ -89,7 +89,9 @@ export class Game {
     // sur iPhone, il faut « Ajouter à l'écran d'accueil »).
     const root = document.documentElement;
     if (document.body.classList.contains('touch') && root.requestFullscreen && !document.fullscreenElement) {
-      root.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+      root.requestFullscreen({ navigationUI: 'hide' })
+        .then(() => screen.orientation?.lock?.('landscape'))
+        .catch(() => {});
     }
     this.index = Math.max(0, Math.min(index, this.levels.length - 1));
     const level = this.levels[this.index];

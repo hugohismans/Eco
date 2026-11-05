@@ -58,6 +58,7 @@ export class Input {
   /** Ouvre ou ferme la parenthèse « menu » : on relâche tout. */
   setMenuOpen(open) {
     this.menuOpen = open;
+    this.releaseTouch?.();
     this.keys.clear();
     this.latched = 0;
     this.touchBits = 0;
@@ -116,14 +117,11 @@ export class Input {
     let stickId = null;
     let ox = 0, oy = 0;
     let stickBits = 0;
-    const held = new Map(); // bouton -> ensemble de doigts
-    const buttonBits = () => {
-      let b = 0;
-      for (const [bit, ids] of held) if (ids.size > 0) b |= bit;
-      return b;
-    };
+    const held = new Map(); // bit -> { el, ids: Set }
     const update = () => {
-      this.touchBits = stickBits | buttonBits();
+      let b = stickBits;
+      for (const [bit, h] of held) if (h.ids.size > 0) b |= bit;
+      this.touchBits = b;
     };
 
     const moveStick = (e) => {
@@ -136,8 +134,7 @@ export class Input {
       stickBits = 0;
       if (len > STICK_RADIUS * STICK_DEAD) {
         // Huit secteurs de 45° : une diagonale quand l'angle s'y prête.
-        const a = Math.atan2(dy, dx);
-        const sector = Math.round(a / (Math.PI / 4));
+        const sector = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
         const dirs = {
           0: IN_RIGHT, 1: IN_RIGHT | IN_DOWN, 2: IN_DOWN, 3: IN_LEFT | IN_DOWN,
           4: IN_LEFT, '-4': IN_LEFT, '-3': IN_LEFT | IN_UP, '-2': IN_UP, '-1': IN_RIGHT | IN_UP,
@@ -148,11 +145,20 @@ export class Input {
       update();
     };
 
+    const releaseStick = () => {
+      stickId = null;
+      stickBits = 0;
+      knob.style.transform = '';
+      base.classList.remove('active');
+      update();
+    };
+
     zone.addEventListener('pointerdown', (e) => {
-      if (stickId !== null) return;
+      // Un nouveau doigt reprend toujours le joystick : si l'ancien a été
+      // « perdu » (geste système, rotation…), il ne bloque plus rien.
       this.usedTouch = true;
       stickId = e.pointerId;
-      zone.setPointerCapture(e.pointerId);
+      try { zone.setPointerCapture(e.pointerId); } catch { /* déjà relâché */ }
       const r = zone.getBoundingClientRect();
       ox = e.clientX;
       oy = e.clientY;
@@ -163,41 +169,54 @@ export class Input {
       e.preventDefault();
     });
     zone.addEventListener('pointermove', (e) => {
-      if (e.pointerId === stickId) moveStick(e);
-    });
-    const endStick = (e) => {
       if (e.pointerId !== stickId) return;
-      stickId = null;
-      stickBits = 0;
-      knob.style.transform = '';
-      base.classList.remove('active');
-      update();
-    };
-    zone.addEventListener('pointerup', endStick);
-    zone.addEventListener('pointercancel', endStick);
+      // Plus aucun doigt posé alors qu'on croyait en tenir un : on lâche.
+      if (e.pointerType !== 'mouse' && e.buttons === 0 && e.pressure === 0) { releaseStick(); return; }
+      moveStick(e);
+    });
 
     const bindButton = (el, bit) => {
       if (!el) return;
-      held.set(bit, new Set());
+      const h = { el, ids: new Set() };
+      held.set(bit, h);
       el.addEventListener('pointerdown', (e) => {
         this.usedTouch = true;
-        held.get(bit).add(e.pointerId);
-        el.setPointerCapture(e.pointerId);
+        h.ids.add(e.pointerId);
+        try { el.setPointerCapture(e.pointerId); } catch { /* déjà relâché */ }
         el.classList.add('pressed');
         this.latched |= bit;
         update();
         e.preventDefault();
       });
-      const end = (e) => {
-        held.get(bit).delete(e.pointerId);
-        if (held.get(bit).size === 0) el.classList.remove('pressed');
-        update();
-      };
-      el.addEventListener('pointerup', end);
-      el.addEventListener('pointercancel', end);
     };
     bindButton(jump, IN_JUMP);
     bindButton(dash, IN_DASH);
     bindButton(grab, IN_GRAB);
+
+    // Fin d'un doigt, d'où qu'elle vienne : relâché, annulé, capture perdue.
+    // Écoutée sur toute la fenêtre pour ne jamais en manquer une.
+    const endPointer = (e) => {
+      if (e.pointerId === stickId) releaseStick();
+      for (const h of held.values()) {
+        if (h.ids.delete(e.pointerId) && h.ids.size === 0) h.el.classList.remove('pressed');
+      }
+      update();
+    };
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+      window.addEventListener(type, endPointer, true);
+    }
+    // Plus aucun doigt sur l'écran : tout est relâché, quoi qu'on ait cru.
+    window.addEventListener('touchend', (e) => { if (e.touches.length === 0) this.releaseTouch(); }, true);
+    window.addEventListener('touchcancel', () => this.releaseTouch(), true);
+
+    /** Relâche toutes les commandes tactiles (menu, onglet quitté, rotation). */
+    this.releaseTouch = () => {
+      releaseStick();
+      for (const h of held.values()) { h.ids.clear(); h.el.classList.remove('pressed'); }
+      update();
+    };
+    window.addEventListener('blur', this.releaseTouch);
+    document.addEventListener('visibilitychange', this.releaseTouch);
+    window.addEventListener('orientationchange', this.releaseTouch);
   }
 }

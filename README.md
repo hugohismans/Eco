@@ -37,11 +37,12 @@ Jusqu'à quatre échos coexistent. Le but : monter dans le dernier train.
 | Pause / menu | Échap ou P | « Menu » |
 | Dans les menus | flèches, Entrée, Échap | toucher |
 
-Le jeu occupe tout l'écran : l'image est agrandie d'un facteur entier et le décor
-se prolonge autour de la pièce. Sur téléphone, les commandes sont posées en
-transparence sous la pièce ; le jeu passe en plein écran au lancement d'une partie
-(Android), ou s'installe sur l'écran d'accueil (iPhone, « Ajouter à l'écran
-d'accueil », grâce au manifeste `public/manifest.webmanifest`).
+Le jeu se joue en largeur et occupe tout l'écran : l'image est agrandie d'un
+facteur entier et le décor se prolonge autour de la pièce. Sur téléphone, les
+commandes sont posées en transparence dans les marges (joystick à gauche, boutons à
+droite) ; tenu droit, le téléphone affiche une invite à le tourner. Le jeu passe en
+plein écran au lancement d'une partie (Android), ou s'installe sur l'écran d'accueil
+(iPhone, « Ajouter à l'écran d'accueil », grâce à `public/manifest.webmanifest`).
 
 ## Mouvements et capacités
 
@@ -98,7 +99,7 @@ tests/          tests node:test
 
 ## Image
 
-Le pixel art est net : il est dessiné à la résolution interne (224 × 336) et agrandi
+Le pixel art est net : il est dessiné à la résolution interne (scène de 448 × 260) et agrandi
 d'un facteur entier, sans lissage. La lumière, elle, est douce : elle est calculée
 dans des calques lisses et composée à la résolution de l'écran.
 
@@ -163,7 +164,7 @@ Voir l'en-tête de `src/sim/level.js`. En bref :
   "theme": "hall",
   "narration": "Une phrase, affichée au début du niveau.",
   "duration": 10,
-  "grid": ["##############", "#P..a.....1.E#", "…"],
+  "grid": ["############################", "#P......a...........1....E.#", "…"],
   "doors": { "1": { "buttons": ["a"], "mode": "and" } },
   "lasers": [{ "col": 0, "row": 15, "buttons": ["c"], "mode": "or", "invert": true }],
   "platforms": [{ "col": 10, "row": 16, "to": { "col": 10, "row": 12 },
@@ -176,7 +177,7 @@ Voir l'en-tête de `src/sim/level.js`. En bref :
 }
 ```
 
-La grille fait 14 colonnes sur 18 lignes :
+La grille fait 28 colonnes sur 14 lignes (format paysage) :
 
 | Caractère | Élément |
 |---|---|

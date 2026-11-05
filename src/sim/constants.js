@@ -17,9 +17,9 @@ export const SUB = 16;
 /** Taille d'une case en sous-pixels. */
 export const TILE_SUB = TILE * SUB;
 
-/** Dimensions de la grille d'un niveau (une pièce = un écran, format portrait). */
-export const GRID_W = 14;
-export const GRID_H = 18;
+/** Dimensions de la grille d'un niveau (une pièce = un écran, format paysage). */
+export const GRID_W = 28;
+export const GRID_H = 14;
 
 /** Nombre maximal d'échos simultanés. */
 export const MAX_ECHOES = 4;
@@ -116,7 +116,7 @@ export const CLIMB_DOWN = 24;
 export const STAMINA_MAX = 300;
 export const STAMINA_STILL = 1;
 export const STAMINA_UP = 3;
-export const STAMINA_CLIMBJUMP = 100;
+export const STAMINA_CLIMBJUMP = 110;
 /** Après un saut depuis le mur, on ne se raccroche pas tout de suite. */
 export const GRAB_LOCK = 12;
 /** Petit bond en haut d'un mur, pour se hisser sur le rebord. */

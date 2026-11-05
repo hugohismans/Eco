@@ -81,6 +81,8 @@ function layout() {
   const h = vv ? vv.height : window.innerHeight;
   const dpr = window.devicePixelRatio || 1;
   const portrait = h > w;
+  document.body.classList.toggle('portrait', portrait);
+  // En largeur, les commandes tactiles tiennent dans les marges : rien à réserver.
   computeView(w, h, { dpr, safeTop: safeTop(), controls: touch && portrait ? 210 : 0 });
   fitCanvas(canvas, dpr);
   // Les écrans d'interface sont dessinés en « pixels du jeu ».
@@ -115,6 +117,7 @@ window.addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'touch' && !document.body.classList.contains('touch')) setTouch(true);
 });
 window.addEventListener('resize', layout);
+$('btn-rotate-dismiss').addEventListener('click', () => document.body.classList.add('rotate-dismissed'));
 window.addEventListener('orientationchange', () => setTimeout(layout, 200));
 window.visualViewport?.addEventListener('resize', layout);
 

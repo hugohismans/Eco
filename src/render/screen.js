@@ -11,9 +11,9 @@
 import { GRID_W, GRID_H, TILE } from '../sim/constants.js';
 
 /** Bandeau du haut (chrono, compteurs), en pixels du jeu. */
-export const HUD_H = 24;
+export const HUD_H = 20;
 /** Bandeau du bas (narration). */
-export const FOOT_H = 24;
+export const FOOT_H = 16;
 export const LEVEL_Y = HUD_H;
 /** Taille de la scène (pièce + bandeaux), en pixels du jeu. */
 export const VIEW_W = GRID_W * TILE;

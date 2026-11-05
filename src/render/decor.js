@@ -378,7 +378,7 @@ export const DECOR = {
     const x0 = cellX(d), y0 = cellY(d);
     const w = (d.cols ?? 4) * TILE + 16, h = (d.rows ?? 10) * TILE;
     const floor = LEVEL_Y + (d.floorRow ?? 12) * TILE;
-    const ground = LEVEL_Y + 16 * TILE;
+    const ground = LEVEL_Y + (d.groundRow ?? 12) * TILE;
     // Caisse : bleu, bandeaux crème, toit arrondi plus sombre.
     rect(A, x0 + 2, y0 + 6, w, floor - y0 - 6, '#4a64ab');
     rect(A, x0 + 6, y0, w - 6, 3, '#2b3f78');
@@ -408,7 +408,7 @@ export const DECOR = {
     rect(A, x0 + 2, floor, w, ground - floor, C.iron0);
     rect(A, x0 + 2, floor, w, 3, C.iron1);
     rect(A, x0 + 6, floor + 10, w - 8, 2, C.iron1);
-    const wy = LEVEL_Y + 16 * TILE - 6;
+    const wy = ground - 6;
     for (const bx of [x0 + 20, x0 + w - 12]) {
       rect(A, bx - 12, wy - 9, 24, 4, C.iron1);
       for (let k = -1; k <= 1; k += 2) {
