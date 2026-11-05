@@ -165,7 +165,7 @@ function prepareTrain(s, bot) {
 }
 
 test('niveau 7 : sans valise, le faisceau garde le quai', () => {
-  const s = new Session(load('07-train.json'));
+  const s = new Session(load('10-train.json'));
   const bot = new Bot(s);
   assert.equal(s.ticksLeft, null, 'pas de chrono');
   bot.walkTo(colCenter(2));
@@ -177,7 +177,7 @@ test('niveau 7 : sans valise, le faisceau garde le quai', () => {
 });
 
 test('niveau 7 : monter dans le train', () => {
-  const s = new Session(load('07-train.json'));
+  const s = new Session(load('10-train.json'));
   const bot = new Bot(s);
   prepareTrain(s, bot);
   const lift = () => s.world.platforms[0];
@@ -194,7 +194,7 @@ test('niveau 7 : monter dans le train', () => {
 });
 
 test('niveau 7 : rester sur le quai', () => {
-  const s = new Session(load('07-train.json'));
+  const s = new Session(load('10-train.json'));
   const bot = new Bot(s);
   prepareTrain(s, bot);
   bot.walkTo(colCenter(6) + 8);
@@ -204,7 +204,7 @@ test('niveau 7 : rester sur le quai', () => {
 
 test('niveau 7 : impossible de sauter de la passerelle au-dessus de la barrière', () => {
   for (const boost of [false, true]) {
-    const s = new Session(load('07-train.json'));
+    const s = new Session(load('10-train.json'));
     const bot = new Bot(s);
     if (boost) {
       // Un écho au bord de la passerelle, pour s'en servir de marchepied.
@@ -220,4 +220,139 @@ test('niveau 7 : impossible de sauter de la passerelle au-dessus de la barrière
     const onCap = bot.p.onGround && bot.p.y + bot.p.h === 9 * TILE * SUB && bot.cx > 9 * TILE;
     assert.equal(onCap, false, `pas de raccourci (marchepied : ${boost})`);
   }
+});
+
+// --- Capacités ------------------------------------------------------------------
+
+import { IN_UP, IN_DOWN, IN_DASH, IN_GRAB } from '../src/sim/constants.js';
+
+/** Remonte une cheminée étroite en sautant d'un mur à l'autre. */
+function wallClimb(bot, untilY, max = 600) {
+  const s = bot.s;
+  let toward = IN_RIGHT;
+  bot.jump(0, 0);
+  for (let i = 0; i < max && s.state === 'playing'; i++) {
+    const p = bot.p;
+    if (p.y < untilY) return true;
+    if (p.onGround) {
+      // Au sol (contre un mur) : on repart en sautant vers lui.
+      bot.step(toward);
+      bot.step(toward | IN_JUMP);
+      continue;
+    }
+    if (!p.onGround && p.wallDir !== 0 && p.vy > -30) {
+      // Contre un mur : on relâche, puis saut vers l'autre.
+      bot.step(p.wallDir > 0 ? IN_RIGHT : IN_LEFT);
+      toward = p.wallDir > 0 ? IN_LEFT : IN_RIGHT;
+      bot.step(toward | IN_JUMP);
+      for (let k = 0; k < 6; k++) bot.step(toward | IN_JUMP);
+    } else {
+      bot.step(toward | (p.vy < 0 ? IN_JUMP : 0));
+    }
+  }
+  return bot.p.y < untilY;
+}
+
+test('niveau 7 : sans saut au mur, la cheminée est infranchissable ; avec, on monte', () => {
+  const level = load('07-escalier.json');
+  assert.deepEqual([...level.abilities], ['walljump']);
+  const s = new Session(level);
+  const bot = new Bot(s);
+  // Écho : tenir le bouton.
+  bot.walkTo(colCenter(4));
+  bot.untilAttemptEnds();
+  // Monter par sauts au mur, puis sortir.
+  bot.walkTo(colCenter(6) + 2);
+  assert.equal(wallClimb(bot, (4 * TILE - 24) * SUB), true, 'en haut de la cheminée');
+  bot.holdUntil(IN_RIGHT, () => s.state !== 'playing', 300);
+  assert.equal(s.outcome, 'exit');
+
+  // Même niveau sans la capacité : on reste en bas.
+  const s2 = new Session({ ...level, abilities: [] });
+  const b2 = new Bot(s2);
+  b2.walkTo(colCenter(6) + 2);
+  assert.equal(wallClimb(b2, 8 * TILE * SUB, 400), false);
+});
+
+/** Gestes d'escalade (mur à droite). */
+const climber = (bot) => ({
+  toWall() { bot.holdUntil(IN_RIGHT, () => bot.p.vx === 0 && bot.p.onGround, 300); },
+  regrab() { bot.holdUntil(IN_RIGHT | IN_GRAB, () => bot.p.climbing, 40); },
+  jumpGrab() {
+    bot.step(IN_RIGHT | IN_JUMP);
+    bot.holdUntil(IN_RIGHT | IN_JUMP, () => bot.p.vy >= 0, 20);
+    this.regrab();
+  },
+  climbJump() {
+    bot.step(IN_GRAB);
+    bot.step(IN_GRAB | IN_JUMP);
+    bot.holdUntil(IN_GRAB | IN_JUMP, () => bot.p.vy >= 0, 20);
+    this.regrab();
+  },
+});
+
+test('niveau 8 : seul, l\u2019endurance ne suffit pas ; en se reposant sur un écho, oui', () => {
+  const level = load('08-chateau.json');
+  const s = new Session(level);
+  const bot = new Bot(s);
+  const c = climber(bot);
+  const top = 2 * TILE * SUB;
+  const feet = () => bot.p.y + bot.p.h;
+  // Seul : trois sauts verticaux, puis plus d'endurance.
+  c.toWall(); c.jumpGrab(); c.climbJump(); c.climbJump(); c.climbJump();
+  bot.holdUntil(IN_GRAB | IN_UP | IN_RIGHT, () => bot.p.onGround, 400);
+  assert.equal(feet() > top, true, 'pas en haut');
+  s.restart();
+  // Écho : grimper un peu et rester agrippé.
+  c.toWall(); c.jumpGrab(); c.climbJump();
+  const attempt = s.attempt;
+  bot.holdUntil(IN_RIGHT | IN_GRAB, () => s.attempt !== attempt, 900);
+  // Joueur : grimper au-dessus de l'écho, lâcher sur sa tête, repartir.
+  c.toWall(); c.jumpGrab(); c.climbJump(); c.climbJump();
+  bot.holdUntil(0, () => bot.p.onGround, 120);
+  assert.equal(bot.p.ground?.kind, 'echo', 'posé sur la tête de l\u2019écho agrippé');
+  bot.step(0);
+  assert.equal(bot.p.stamina, 300, 'endurance rechargée');
+  c.jumpGrab(); c.climbJump(); c.climbJump();
+  bot.step(IN_GRAB);
+  bot.step(IN_GRAB | IN_JUMP);
+  bot.holdUntil(IN_RIGHT | IN_GRAB | IN_JUMP | IN_UP, () => feet() <= top && bot.p.onGround, 200);
+  bot.holdUntil(IN_RIGHT, () => s.state !== 'playing', 200);
+  assert.equal(s.outcome, 'exit');
+});
+
+test('niveau 9 : le fossé ne se franchit qu’avec un dash', () => {
+  const level = load('09-depot.json');
+  const cross = (abilities) => {
+    const s = new Session({ ...level, abilities });
+    const bot = new Bot(s);
+    bot.walkTo(colCenter(3));
+    bot.untilAttemptEnds(); // écho sur le bouton
+    bot.walkTo(4 * TILE + 4);
+    bot.holdUntil(IN_RIGHT, () => bot.cx >= 5 * TILE - 2, 60);
+    bot.step(IN_RIGHT | IN_JUMP);
+    for (let k = 0; k < 12; k++) bot.step(IN_RIGHT | IN_JUMP);
+    bot.step(IN_RIGHT | IN_DASH);
+    bot.holdUntil(IN_RIGHT, () => s.state !== 'playing' || s.world.player.dead, 300);
+    return s;
+  };
+  const withDash = cross(['walljump', 'grab', 'dash']);
+  assert.equal(withDash.world.player.dead, false);
+  assert.equal(withDash.outcome, 'exit');
+  const noDash = cross(['walljump', 'grab']);
+  assert.equal(noDash.world.player.dead, true, 'sans dash, on tombe dans le faisceau');
+});
+
+test('les échos rejouent aussi dash, saut au mur et escalade', () => {
+  const level = load('09-depot.json');
+  const s = new Session(level);
+  const bot = new Bot(s);
+  const trace = [];
+  const bits = [IN_RIGHT, IN_RIGHT, IN_RIGHT | IN_JUMP, IN_RIGHT | IN_JUMP, IN_DASH | IN_UP, 0, 0, IN_LEFT | IN_DASH];
+  for (let i = 0; i < 90; i++) { bot.step(bits[i % bits.length]); trace.push([bot.p.x, bot.p.y]); }
+  s.replay();
+  const echo = s.world.actors[0];
+  const replay = [];
+  for (let i = 0; i < 90; i++) { bot.step(0); replay.push([echo.x, echo.y]); }
+  assert.deepEqual(replay, trace);
 });

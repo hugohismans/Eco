@@ -27,13 +27,39 @@ Jusqu'à quatre échos coexistent. Le but : monter dans le dernier train.
 
 | | Ordinateur | Téléphone |
 |---|---|---|
-| Marcher | ← → ou A D (Q D en AZERTY) | joystick, à gauche |
-| Sauter | Espace ou ↑ | bouton « Saut », à droite |
-| Rejouer (nouvelle tentative) | R | bouton « Rejouer » |
-| Recommencer (efface les échos) | Retour arrière | bouton « Recommencer » |
-| Interagir (rester sur le quai) | Bas, S ou E | joystick vers le bas |
-| Pause / menu | Échap ou P | bouton « Menu » |
+| Se déplacer, viser, grimper | flèches ou WASD / ZQSD | joystick (8 directions), à gauche |
+| Sauter | Espace, C ou K | « Saut » |
+| Dash (si débloqué) | X ou J (+ direction) | « Dash » (+ joystick) |
+| S'agripper (si débloqué) | Z, Maj ou L (maintenu) | « Agripper » (maintenu) |
+| Rester sur le quai | Bas ou E | joystick vers le bas |
+| Rejouer (nouvelle tentative) | R | « Rejouer » |
+| Effacer les échos | Retour arrière | « Effacer » |
+| Pause / menu | Échap ou P | « Menu » |
 | Dans les menus | flèches, Entrée, Échap | toucher |
+
+Le jeu occupe tout l'écran : l'image est agrandie d'un facteur entier et le décor
+se prolonge autour de la pièce. Sur téléphone, les commandes sont posées en
+transparence sous la pièce ; le jeu passe en plein écran au lancement d'une partie
+(Android), ou s'installe sur l'écran d'accueil (iPhone, « Ajouter à l'écran
+d'accueil », grâce au manifeste `public/manifest.webmanifest`).
+
+## Mouvements et capacités
+
+Les mouvements s'inspirent des jeux de plateforme de précision, et les échos les
+rejouent comme le reste (ce sont des entrées, pas des positions).
+
+- De base : marche, saut court ou long, tolérance au bord, appui mémorisé, coins de
+  plafond rattrapés de quelques pixels.
+- `walljump` (niveau 7) : glisser le long d'un mur en poussant vers lui, sauter
+  d'un mur à l'autre.
+- `grab` (niveau 8) : s'agripper, grimper et descendre, saut vertical depuis le
+  mur ; une endurance limite l'escalade (la silhouette clignote quand elle
+  s'épuise) et se recharge au sol, ou sur la tête d'un écho.
+- `dash` (niveau 9) : une ruée dans l'une des huit directions, une fois par saut,
+  rechargée au sol ; l'écharpe s'allume quand un dash est disponible.
+
+Chaque niveau déclare ses capacités (`"abilities"`) et peut en présenter une
+nouvelle (`"teach"`), qui s'affiche sur une carte au début.
 
 ## Travailler en local
 
@@ -113,9 +139,15 @@ décor (`lamp`, `pendant`, `window`, `clock`, `poster`, `bench`, `canopy`, `faca
 5. **Le souterrain** : courte échelle sur un écho pour atteindre le rebord.
 6. **Le passage de la voie** : les plaques déclenchent le faisceau ; un écho
    placé devant l'arrête pendant qu'on passe.
-7. **Le dernier train** : sans chrono. Valise dans le faisceau, échos sur les
-   boutons de la barrière et du monte-charge, puis monter dans le train… ou
-   s'asseoir sur le banc (touche Bas / S, joystick vers le bas). Deux fins.
+7. **La cage d'escalier** (saut au mur) : un écho tient la porte du haut pendant
+   qu'on remonte la cheminée de mur en mur.
+8. **Le château d'eau** (escalade) : l'endurance ne suffit pas ; un écho resté
+   agrippé au mur sert de palier pour reprendre son souffle.
+9. **Le dépôt** (dash) : un fossé gardé par un faisceau, qu'on ne franchit qu'en
+   dash, pendant qu'un écho tient la porte.
+10. **Le dernier train** : sans chrono. Valise dans le faisceau, échos sur les
+    boutons de la barrière et du monte-charge, puis monter dans le train… ou
+    s'asseoir sur le banc. Deux fins.
 
 Les solutions sont jouées par un robot dans `tests/levels.test.js` (et l'on y
 vérifie aussi qu'elles ne marchent pas sans les échos).
@@ -138,6 +170,8 @@ Voir l'en-tête de `src/sim/level.js`. En bref :
                   "buttons": ["b"], "behavior": "loop" }],
   "stay": { "col": 6, "row": 15, "cols": 2 },
   "endings": { "exit": "…", "stay": "…" },
+  "abilities": ["walljump", "grab", "dash"],
+  "teach": "dash",
   "decor": [{ "type": "lamp", "col": 3, "row": 9 }]
 }
 ```

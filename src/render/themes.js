@@ -10,7 +10,7 @@
 import { GRID_W, GRID_H, TILE, T_SOLID, T_ONEWAY } from '../sim/constants.js';
 import { C } from './palette.js';
 import { rect, px, checker, sparse, rng } from './pixel.js';
-import { VIEW_W, VIEW_H, LEVEL_Y } from './screen.js';
+import { VIEW_W, VIEW_H, LEVEL_Y, sceneBounds } from './screen.js';
 
 /** Case de la grille pour le dessin : au-delà des bords, on prolonge. */
 export function drawTileAt(level, col, row) {
@@ -24,6 +24,19 @@ export function drawTileAt(level, col, row) {
 }
 
 const solidAt = (level, c, r) => drawTileAt(level, c, r) === T_SOLID;
+
+/** Cases (rangées, colonnes) couvrant la zone à peindre, avec une marge. */
+function cellRange(B) {
+  return {
+    r0: Math.floor((B.y0 - LEVEL_Y) / TILE) - 2,
+    r1: Math.ceil((B.y1 - LEVEL_Y) / TILE) + 2,
+    c0: Math.floor(B.x0 / TILE) - 1,
+    c1: Math.ceil(B.x1 / TILE) + 1,
+  };
+}
+
+/** Zone par défaut : la scène seule (vignettes, tests). */
+const SCENE = { x0: 0, y0: 0, x1: VIEW_W, y1: VIEW_H, w: VIEW_W, h: VIEW_H };
 
 /** Première rangée solide sous (col, row), ou GRID_H. */
 export function floorRowBelow(level, col, row) {
@@ -115,7 +128,7 @@ export function themeOf(level) {
 // --- Fonds ----------------------------------------------------------------
 
 /** Ciel nocturne, étoiles, lune, collines et lumières de la ville. */
-function paintSky(level, A, Em, lights) {
+function paintSky(level, A, Em, lights, theme, B = SCENE) {
   const r = rng(7);
   // Ciel en bandes tramées (pas de dégradé lisse : c'est la lumière qui l'est).
   const bands = [
@@ -125,12 +138,13 @@ function paintSky(level, A, Em, lights) {
     [200, '#5a6aa8'],
   ];
   for (let i = 0; i < bands.length; i++) {
-    const [y0, col] = bands[i];
-    const y1 = i + 1 < bands.length ? bands[i + 1][0] : VIEW_H;
-    rect(A, 0, y0, VIEW_W, y1 - y0, col);
+    const y0 = i === 0 ? B.y0 : bands[i][0];
+    const col = bands[i][1];
+    const y1 = i + 1 < bands.length ? bands[i + 1][0] : B.y1;
+    rect(A, B.x0, y0, B.w, y1 - y0, col);
     if (i > 0) {
-      checker(A, 0, y0, VIEW_W, 4, bands[i - 1][1]);
-      sparse(A, 0, y0 + 4, VIEW_W, 6, bands[i - 1][1]);
+      checker(A, B.x0, y0, B.w, 4, bands[i - 1][1], B.x0 & 1);
+      sparse(A, B.x0, y0 + 4, B.w, 6, bands[i - 1][1]);
     }
   }
   // Voiles de nuages.
@@ -140,9 +154,10 @@ function paintSky(level, A, Em, lights) {
     rect(A, cx - w / 5, cy + 1, w / 2.5, 1, '#5a6aa8');
   }
   // Étoiles (émissives : elles ne dépendent pas de l'éclairage).
-  for (let i = 0; i < 60; i++) {
-    const x = Math.floor(r() * VIEW_W);
-    const y = Math.floor(r() * 180);
+  const nStars = Math.round((60 * B.w * (180 - B.y0)) / (VIEW_W * 180));
+  for (let i = 0; i < nStars; i++) {
+    const x = Math.floor(B.x0 + r() * B.w);
+    const y = Math.floor(B.y0 + r() * (180 - B.y0));
     const b = r();
     px(Em, x, y, b > 0.8 ? C.moon2 : b > 0.4 ? C.moon1 : C.moon0);
     if (b > 0.94) {
@@ -163,10 +178,10 @@ function paintSky(level, A, Em, lights) {
 
   // Collines lointaines et ville.
   const hillTop = (x) => 214 + Math.round(6 * Math.sin(x / 23) + 4 * Math.sin(x / 9 + 1));
-  for (let x = 0; x < VIEW_W; x++) rect(A, x, hillTop(x), 1, VIEW_H, C.night2);
-  for (let x = 0; x < VIEW_W; x += 1) if (((x * 7) % 5) === 0) px(A, x, hillTop(x) - 1, C.night3);
-  let x = 4;
-  while (x < VIEW_W) {
+  for (let x = B.x0; x < B.x1; x++) rect(A, x, hillTop(x), 1, B.y1 - hillTop(x), C.night2);
+  for (let x = B.x0; x < B.x1; x += 1) if ((((x * 7) % 5) + 5) % 5 === 0) px(A, x, hillTop(x) - 1, C.night3);
+  let x = B.x0 + 4;
+  while (x < B.x1) {
     const w = 6 + Math.floor(r() * 10);
     const h = 6 + Math.floor(r() * 16);
     const base = 236;
@@ -181,36 +196,38 @@ function paintSky(level, A, Em, lights) {
   // Pylône et caténaire au loin.
   for (let y = 196; y < 236; y++) px(A, 30, y, C.night1);
   rect(A, 26, 198, 9, 1, C.night1);
-  for (let x2 = 0; x2 < VIEW_W; x2++) px(A, x2, 199 + Math.round(3 * Math.cos((x2 - 30) / 60)), C.night2);
+  for (let x2 = B.x0; x2 < B.x1; x2++) px(A, x2, 199 + Math.round(3 * Math.cos((x2 - 30) / 60)), C.night2);
 }
 
 /** Intérieur : enduit ocre, pilastres de briques, lambris et corniches. */
-function paintInterior(level, A, Em, lights, theme) {
+function paintInterior(level, A, Em, lights, theme, B = SCENE) {
   const wall = theme.wall;
   const wallDark = theme.wallDark;
-  rect(A, 0, 0, VIEW_W, VIEW_H, wall);
+  const X0 = B.x0 - (((B.x0 % 8) + 8) % 8), Y0 = B.y0 - (((B.y0 % 8) + 8) % 8);
+  rect(A, B.x0, B.y0, B.w, B.h, wall);
   // Grain de l'enduit, ou rayures d'un papier peint.
   if (theme.stripes) {
-    for (let x = 0; x < VIEW_W; x += 8) {
-      rect(A, x, 0, 3, VIEW_H, wallDark);
-      for (let y = (x >> 3) & 1 ? 4 : 0; y < VIEW_H; y += 8) px(A, x + 5, y, wallDark);
+    for (let x = X0; x < B.x1; x += 8) {
+      rect(A, x, B.y0, 3, B.h, wallDark);
+      for (let y = Y0 + ((x >> 3) & 1 ? 4 : 0); y < B.y1; y += 8) px(A, x + 5, y, wallDark);
     }
   } else {
-    sparse(A, 0, 0, VIEW_W, VIEW_H, wallDark);
+    sparse(A, X0, Y0, B.x1 - X0, B.y1 - Y0, wallDark);
   }
   // Pilastres de briques toutes les quatre cases.
-  for (let cx = 32; theme.pilasters && cx < VIEW_W; cx += 64) {
-    for (let y = 0; y < VIEW_H; y += 4) {
+  for (let cx = 32 + 64 * Math.floor((B.x0 - 32) / 64); theme.pilasters && cx < B.x1; cx += 64) {
+    for (let y = Y0; y < B.y1; y += 4) {
       rect(A, cx, y, 12, 3, C.brick3);
       rect(A, cx, y + 3, 12, 1, C.brick1);
       px(A, cx + ((y >> 2) & 1 ? 3 : 8), y, C.brick1);
     }
-    rect(A, cx - 1, 0, 1, VIEW_H, C.brick1);
-    rect(A, cx + 12, 0, 1, VIEW_H, C.brick1);
+    rect(A, cx - 1, B.y0, 1, B.h, C.brick1);
+    rect(A, cx + 12, B.y0, 1, B.h, C.brick1);
   }
   // Lambris au-dessus de chaque sol, corniche sous chaque plafond.
-  for (let r = -2; r < GRID_H + 2; r++) {
-    for (let c = 0; c < GRID_W; c++) {
+  const R = cellRange(B);
+  for (let r = R.r0; r < R.r1; r++) {
+    for (let c = R.c0; c < R.c1; c++) {
       if (solidAt(level, c, r)) continue;
       const x = c * TILE, y = LEVEL_Y + r * TILE;
       if (solidAt(level, c, r + 1)) {
@@ -231,22 +248,24 @@ function paintInterior(level, A, Em, lights, theme) {
 }
 
 /** Souterrain : faïence blanche biseautée, bandeau de couleur, béton en bas. */
-function paintTiled(level, A) {
+function paintTiled(level, A, Em, lights, theme, B = SCENE) {
   const tile = '#a9a28e';
   const grout = '#7d7768';
   const hi = '#c4bda6';
-  rect(A, 0, 0, VIEW_W, VIEW_H, tile);
-  for (let y = 0; y < VIEW_H; y += 6) {
-    rect(A, 0, y + 5, VIEW_W, 1, grout);
-    const off = (y / 6) & 1 ? 6 : 0;
-    for (let x = off; x < VIEW_W; x += 12) {
+  rect(A, B.x0, B.y0, B.w, B.h, tile);
+  const Y0 = B.y0 - (((B.y0 % 12) + 12) % 12), X0 = B.x0 - (((B.x0 % 12) + 12) % 12);
+  for (let y = Y0; y < B.y1; y += 6) {
+    rect(A, B.x0, y + 5, B.w, 1, grout);
+    const off = (((y - Y0) / 6) & 1) ? 6 : 0;
+    for (let x = X0 + off; x < B.x1; x += 12) {
       rect(A, x, y, 1, 5, grout);
       rect(A, x + 1, y, 10, 1, hi);
     }
   }
   // Bandeau de carreaux bruns à mi-hauteur de chaque pièce, et soubassement.
-  for (let r = -2; r < GRID_H + 2; r++) {
-    for (let c = 0; c < GRID_W; c++) {
+  const R = cellRange(B);
+  for (let r = R.r0; r < R.r1; r++) {
+    for (let c = R.c0; c < R.c1; c++) {
       if (solidAt(level, c, r)) continue;
       const x = c * TILE, y = LEVEL_Y + r * TILE;
       if (solidAt(level, c, r + 1)) {
@@ -265,9 +284,10 @@ function paintTiled(level, A) {
 // --- Cases ----------------------------------------------------------------
 
 /** Peint les cases solides et les plateformes fines, avec leurs bords. */
-export function paintTiles(level, theme, A) {
-  for (let r = -2; r < GRID_H + 2; r++) {
-    for (let c = 0; c < GRID_W; c++) {
+export function paintTiles(level, theme, A, B = SCENE) {
+  const R = cellRange(B);
+  for (let r = R.r0; r < R.r1; r++) {
+    for (let c = R.c0; c < R.c1; c++) {
       const t = drawTileAt(level, c, r);
       const x = c * TILE, y = LEVEL_Y + r * TILE;
       if (t === T_SOLID) {
@@ -281,8 +301,8 @@ export function paintTiles(level, theme, A) {
     }
   }
   // Ombre portée douce des murs sur le fond (occlusion ambiante, tramée).
-  for (let r = -1; r < GRID_H + 1; r++) {
-    for (let c = 0; c < GRID_W; c++) {
+  for (let r = R.r0; r < R.r1; r++) {
+    for (let c = R.c0; c < R.c1; c++) {
       if (solidAt(level, c, r)) continue;
       const x = c * TILE, y = LEVEL_Y + r * TILE;
       const ao = 'rgba(5,6,15,0.35)';

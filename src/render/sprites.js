@@ -80,6 +80,20 @@ export const FRAMES = {
   land: [E, E, ...HEAD, ...TORSO_IDLE, ...LEGS_SQUAT],
 };
 
+/** Copie d'une image, avec des pixels pleins en plus : [rangée, colonne]. */
+function withPixels(rows, pixels) {
+  const out = rows.map((r) => r.split(''));
+  for (const [r, c] of pixels) out[r][c] = '#';
+  return out.map((r) => r.join(''));
+}
+const range = (a, b, col) => Array.from({ length: b - a + 1 }, (_, i) => [a + i, col]);
+
+// Agrippé au mur (à droite) : un bras levé contre le mur, jambes repliées.
+FRAMES.climbA = withPixels([...HEAD, ...NECK, ...TORSO_IDLE, ...LEGS_PASS], [...range(0, 8, 10), [8, 9]]);
+FRAMES.climbB = withPixels([E, ...HEAD, ...TORSO_IDLE, ...LEGS_STAND], [...range(3, 10, 10), [9, 9]]);
+// Glissade : bras tendu contre le mur, manteau soulevé.
+FRAMES.slide = withPixels(FRAMES.fall, [...range(4, 9, 11), [9, 10]]);
+
 export const WALK_CYCLE = ['walk0', 'walk1', 'walk2', 'walk3'];
 
 for (const [name, rows] of Object.entries(FRAMES)) {

@@ -15,6 +15,8 @@
 //   "stay": { "col": 6, "row": 15, "cols": 2 },    zone où l'on peut « rester » (fin)
 //   "endings": { "exit": "…", "stay": "…" },       phrases de fin (dernier niveau)
 //   "exitStyle": "door" | "train",
+//   "abilities": ["walljump", "grab", "dash"],     capacités disponibles
+//   "teach": "dash",                                capacité présentée ici (carte)
 //   "decor": [ { "type": "bench", "col": 3, "row": 14 } ]   (purement visuel)
 // }
 //
@@ -36,7 +38,7 @@
 import {
   GRID_W, GRID_H, TILE, TILE_SUB, SUB, TPS,
   T_EMPTY, T_SOLID, T_ONEWAY, ACTOR_W, ACTOR_H,
-  BLOCK_TYPES, PLATFORM_H, PLATFORM_SPEED,
+  BLOCK_TYPES, PLATFORM_H, PLATFORM_SPEED, ABILITIES,
 } from './constants.js';
 
 /** Hauteur visible d'un bouton relevé (px) : sert aussi de capteur. */
@@ -196,6 +198,14 @@ export function parseLevel(def) {
     }
     : null;
 
+  const abilities = def.abilities ?? [];
+  for (const ab of abilities) {
+    if (!ABILITIES.includes(ab)) throw new Error(`${where} : capacité « ${ab} » inconnue (${ABILITIES.join(', ')}).`);
+  }
+  if (def.teach && !abilities.includes(def.teach)) {
+    throw new Error(`${where} : « teach » (${def.teach}) doit faire partie des capacités du niveau.`);
+  }
+
   // Le personnage apparaît centré dans sa case, les pieds au bas de la case.
   const spawnPos = {
     x: spawn.col * TILE_SUB + ((TILE * SUB - ACTOR_W) >> 1),
@@ -222,6 +232,8 @@ export function parseLevel(def) {
     platforms,
     stay,
     endings: def.endings ?? null,
+    abilities: Object.freeze([...abilities]),
+    teach: def.teach ?? null,
     decor: def.decor ?? [],
   });
 }

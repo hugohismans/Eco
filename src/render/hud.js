@@ -27,12 +27,11 @@ const ICON = [
 ];
 
 export function drawHud(ctx, session, ui) {
-  ctx.clearRect(0, 0, VIEW_W, VIEW_H);
-
-  // Voile du bandeau haut, tramé.
-  rect(ctx, 0, 0, VIEW_W, 16, 'rgba(5,6,15,0.55)');
-  checker(ctx, 0, 16, VIEW_W, 3, 'rgba(5,6,15,0.55)');
-  sparse(ctx, 0, 19, VIEW_W, 4, 'rgba(5,6,15,0.55)');
+  const B = ui.bounds ?? { x0: 0, w: VIEW_W };
+  // Voile du bandeau haut, tramé, sur toute la largeur de l'écran.
+  rect(ctx, B.x0, 0, B.w, 16, 'rgba(5,6,15,0.55)');
+  checker(ctx, B.x0, 16, B.w, 3, 'rgba(5,6,15,0.55)', B.x0 & 1);
+  sparse(ctx, B.x0, 19, B.w, 4, 'rgba(5,6,15,0.55)');
 
   // Chrono : une mèche qui se consume.
   const left = session.ticksLeft;
@@ -81,12 +80,13 @@ export function drawHud(ctx, session, ui) {
     ctx.globalAlpha = 1;
   }
 
-  drawNarration(ctx, session.level.narration, t);
+  drawNarration(ctx, session.level.narration, t, B);
+  drawTeach(ctx, session.level.teach, t, ui.touch);
   if (ui.overlay) drawOverlay(ctx, ui.overlay, ui.overlayTicks ?? 999);
 }
 
 /** La phrase du niveau : écrite lettre à lettre en bas de l'écran, puis fondue. */
-function drawNarration(ctx, text, t) {
+function drawNarration(ctx, text, t, B) {
   if (!text) return;
   const lines = wrapText(text, 26);
   const total = lines.reduce((n, l) => n + l.length, 0);
@@ -99,8 +99,8 @@ function drawNarration(ctx, text, t) {
   const boxH = lines.length * 11 + 6;
   const y0 = VIEW_H - boxH - 2;
   ctx.globalAlpha = fade;
-  checker(ctx, 0, y0 - 3, VIEW_W, 3, 'rgba(5,6,15,0.6)');
-  rect(ctx, 0, y0, VIEW_W, VIEW_H - y0, 'rgba(5,6,15,0.6)');
+  checker(ctx, B.x0, y0 - 3, B.w, 3, 'rgba(5,6,15,0.6)', B.x0 & 1);
+  rect(ctx, B.x0, y0, B.w, VIEW_H - y0, 'rgba(5,6,15,0.6)');
 
   let shown = typed;
   lines.forEach((line, i) => {
@@ -128,5 +128,44 @@ function drawOverlay(ctx, { title, hint }, ticks) {
     const s = textSprite(hint, C.paper2);
     ctx.drawImage(s, Math.round((VIEW_W - s.width) / 2), y + lines.length * 12 + 14);
   }
+  ctx.globalAlpha = 1;
+}
+
+/** Carte « Nouveau » : la capacité présentée dans ce niveau. */
+const TEACH = {
+  walljump: {
+    title: 'SAUT AU MUR',
+    keys: ['Contre un mur, saute', 'encore pour rebondir.', 'Pousse vers le mur', 'pour glisser.'],
+    touch: ['Contre un mur, saute', 'encore pour rebondir.', 'Pousse vers le mur', 'pour glisser.'],
+  },
+  grab: {
+    title: "S'AGRIPPER",
+    keys: ['Maintiens Z ou Maj', 'contre un mur.', 'Haut / bas : grimper.', 'Gare à l\'endurance.'],
+    touch: ['Maintiens AGRIPPER', 'contre un mur.', 'Haut / bas : grimper.', 'Gare à l\'endurance.'],
+  },
+  dash: {
+    title: 'DASH',
+    keys: ['X + direction : ruée', 'dans 8 directions.', 'Un dash par saut,', 'rechargé au sol.'],
+    touch: ['DASH + joystick : ruée', 'dans 8 directions.', 'Un dash par saut,', 'rechargé au sol.'],
+  },
+};
+
+function drawTeach(ctx, ability, t, touch) {
+  const card = TEACH[ability];
+  if (!card || t > 9 * TPS) return;
+  const a = Math.min(1, t / 30, (9 * TPS - t) / 40);
+  const lines = touch ? card.touch : card.keys;
+  const w = 26 * GLYPH - 16, h = 22 + lines.length * 10;
+  const x = Math.round((VIEW_W - w) / 2), y = 44;
+  ctx.globalAlpha = Math.max(0, a) * 0.92;
+  rect(ctx, x, y, w, h, 'rgba(5,6,15,0.82)');
+  rect(ctx, x, y, w, 1, C.lamp1);
+  rect(ctx, x, y + h - 1, w, 1, C.lamp0);
+  ctx.globalAlpha = Math.max(0, a);
+  const k = textSprite('NOUVEAU', C.lamp1);
+  ctx.drawImage(k, x + 6, y + 5);
+  const ti = textSprite(card.title, C.lamp4);
+  ctx.drawImage(ti, x + w - ti.width - 6, y + 5);
+  lines.forEach((l, i) => ctx.drawImage(textSprite(l, C.paper3), x + 6, y + 19 + i * 10));
   ctx.globalAlpha = 1;
 }

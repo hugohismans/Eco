@@ -1,19 +1,31 @@
-// Entrées : clavier (flèches, WASD/ZQSD, espace) et écran tactile (joystick
-// virtuel à gauche, bouton de saut à droite).
+// Entrées : clavier et écran tactile.
+//
+// Clavier (comme les jeux de plateforme de précision) :
+//   flèches ou WASD/ZQSD : se déplacer, viser (dash), grimper
+//   C, Espace ou K : sauter      X ou J : dash      Z, Maj ou L : s'agripper
+//   E (ou Bas) : interagir      R : rejouer      Retour arrière : effacer les échos
+//   Échap ou P : menu
+// Tactile : joystick flottant à gauche (8 directions), boutons à droite.
 //
 // La simulation ne voit qu'un octet par tick. `sample()` le compose à partir
 // des touches tenues ET des appuis survenus depuis le dernier tick : un tap
 // très bref, relâché entre deux ticks, n'est donc jamais perdu.
 
-import { IN_LEFT, IN_RIGHT, IN_JUMP, IN_ACT } from '../sim/constants.js';
+import {
+  IN_LEFT, IN_RIGHT, IN_JUMP, IN_ACT, IN_UP, IN_DOWN, IN_DASH, IN_GRAB,
+} from '../sim/constants.js';
 
 // e.code désigne la position physique : KeyA/KeyW/KeyD/KeyS couvrent aussi
 // bien WASD (QWERTY) que ZQSD (AZERTY).
 const KEY_BITS = {
   ArrowLeft: IN_LEFT, KeyA: IN_LEFT,
   ArrowRight: IN_RIGHT, KeyD: IN_RIGHT,
-  ArrowUp: IN_JUMP, KeyW: IN_JUMP, Space: IN_JUMP,
-  ArrowDown: IN_ACT, KeyS: IN_ACT, KeyE: IN_ACT,
+  ArrowUp: IN_UP, KeyW: IN_UP,
+  ArrowDown: IN_DOWN, KeyS: IN_DOWN,
+  Space: IN_JUMP, KeyC: IN_JUMP, KeyK: IN_JUMP,
+  KeyX: IN_DASH, KeyJ: IN_DASH,
+  KeyZ: IN_GRAB, ShiftLeft: IN_GRAB, ShiftRight: IN_GRAB, KeyL: IN_GRAB,
+  KeyE: IN_ACT,
 };
 
 const KEY_COMMANDS = {
@@ -26,9 +38,9 @@ const KEY_COMMANDS = {
   KeyP: 'menu',
 };
 
-/** Distance (px CSS) au-delà de laquelle le joystick donne une direction. */
-const STICK_DEAD = 10;
-const STICK_RADIUS = 38;
+/** Rayon du joystick (px CSS) et part du rayon sous laquelle on ne bouge pas. */
+const STICK_RADIUS = 40;
+const STICK_DEAD = 0.3;
 
 export class Input {
   constructor() {
@@ -57,11 +69,10 @@ export class Input {
     let bits = this.touchBits | this.latched;
     for (const code of this.keys) bits |= KEY_BITS[code] ?? 0;
     this.latched = 0;
-    // Gauche + droite ensemble s'annulent dans la simulation : rien à faire ici.
     return bits;
   }
 
-  /** Commandes (rejouer, recommencer, confirmer) depuis le dernier appel. */
+  /** Commandes (rejouer, effacer, menu, confirmer) depuis le dernier appel. */
   takeCommands() {
     const out = this.commands;
     this.commands = [];
@@ -81,7 +92,6 @@ export class Input {
       if (bit !== undefined) {
         if (!e.repeat) this.latched |= bit;
         this.keys.add(e.code);
-        if (bit === IN_JUMP) this.commands.push('confirm');
         e.preventDefault();
       } else if (cmd) {
         if (!e.repeat) this.commands.push(cmd);
@@ -97,20 +107,23 @@ export class Input {
   }
 
   /**
-   * Joystick « flottant » : il apparaît là où le pouce se pose dans la zone.
-   * @param {HTMLElement} zone zone de capture (moitié gauche)
-   * @param {HTMLElement} base cercle de base
-   * @param {HTMLElement} knob pastille mobile
-   * @param {HTMLElement} jumpBtn bouton de saut
+   * Commandes tactiles, posées en transparence sur le jeu.
+   * Joystick « flottant » : il apparaît là où le pouce se pose dans sa zone.
+   * @param {{ zone: HTMLElement, base: HTMLElement, knob: HTMLElement,
+   *           jump: HTMLElement, dash: HTMLElement, grab: HTMLElement }} el
    */
-  attachTouch(zone, base, knob, jumpBtn) {
+  attachTouch({ zone, base, knob, jump, dash, grab }) {
     let stickId = null;
     let ox = 0, oy = 0;
     let stickBits = 0;
-    const jumpIds = new Set();
-
+    const held = new Map(); // bouton -> ensemble de doigts
+    const buttonBits = () => {
+      let b = 0;
+      for (const [bit, ids] of held) if (ids.size > 0) b |= bit;
+      return b;
+    };
     const update = () => {
-      this.touchBits = stickBits | (jumpIds.size > 0 ? IN_JUMP : 0);
+      this.touchBits = stickBits | buttonBits();
     };
 
     const moveStick = (e) => {
@@ -121,10 +134,16 @@ export class Input {
       knob.style.transform = `translate(${dx}px, ${dy}px)`;
       const prev = stickBits;
       stickBits = 0;
-      if (dx < -STICK_DEAD) stickBits |= IN_LEFT;
-      if (dx > STICK_DEAD) stickBits |= IN_RIGHT;
-      // Vers le bas, franchement : interaction.
-      if (dy > STICK_RADIUS * 0.7 && Math.abs(dx) < STICK_RADIUS * 0.6) stickBits |= IN_ACT;
+      if (len > STICK_RADIUS * STICK_DEAD) {
+        // Huit secteurs de 45° : une diagonale quand l'angle s'y prête.
+        const a = Math.atan2(dy, dx);
+        const sector = Math.round(a / (Math.PI / 4));
+        const dirs = {
+          0: IN_RIGHT, 1: IN_RIGHT | IN_DOWN, 2: IN_DOWN, 3: IN_LEFT | IN_DOWN,
+          4: IN_LEFT, '-4': IN_LEFT, '-3': IN_LEFT | IN_UP, '-2': IN_UP, '-1': IN_RIGHT | IN_UP,
+        };
+        stickBits = dirs[sector] ?? 0;
+      }
       this.latched |= stickBits & ~prev;
       update();
     };
@@ -157,22 +176,28 @@ export class Input {
     zone.addEventListener('pointerup', endStick);
     zone.addEventListener('pointercancel', endStick);
 
-    jumpBtn.addEventListener('pointerdown', (e) => {
-      this.usedTouch = true;
-      jumpIds.add(e.pointerId);
-      jumpBtn.setPointerCapture(e.pointerId);
-      jumpBtn.classList.add('pressed');
-      this.latched |= IN_JUMP;
-      this.commands.push('confirm');
-      update();
-      e.preventDefault();
-    });
-    const endJump = (e) => {
-      jumpIds.delete(e.pointerId);
-      if (jumpIds.size === 0) jumpBtn.classList.remove('pressed');
-      update();
+    const bindButton = (el, bit) => {
+      if (!el) return;
+      held.set(bit, new Set());
+      el.addEventListener('pointerdown', (e) => {
+        this.usedTouch = true;
+        held.get(bit).add(e.pointerId);
+        el.setPointerCapture(e.pointerId);
+        el.classList.add('pressed');
+        this.latched |= bit;
+        update();
+        e.preventDefault();
+      });
+      const end = (e) => {
+        held.get(bit).delete(e.pointerId);
+        if (held.get(bit).size === 0) el.classList.remove('pressed');
+        update();
+      };
+      el.addEventListener('pointerup', end);
+      el.addEventListener('pointercancel', end);
     };
-    jumpBtn.addEventListener('pointerup', endJump);
-    jumpBtn.addEventListener('pointercancel', endJump);
+    bindButton(jump, IN_JUMP);
+    bindButton(dash, IN_DASH);
+    bindButton(grab, IN_GRAB);
   }
 }

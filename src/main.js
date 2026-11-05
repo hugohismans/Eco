@@ -4,7 +4,7 @@ import '@fontsource/press-start-2p/latin.css';
 import { Input } from './core/input.js';
 import { startLoop } from './core/loop.js';
 import { Renderer } from './render/renderer.js';
-import { fitCanvas } from './render/screen.js';
+import { computeView, fitCanvas, view } from './render/screen.js';
 import { Game } from './game.js';
 import { LEVELS } from './levels/index.js';
 import { Sound } from './audio/sound.js';
@@ -17,7 +17,14 @@ const canvas = $('screen');
 // --- Entrées -------------------------------------------------------------
 const input = new Input();
 input.attachKeyboard();
-input.attachTouch($('stick-zone'), $('stick-base'), $('stick-knob'), $('btn-jump'));
+input.attachTouch({
+  zone: $('stick-zone'),
+  base: $('stick-base'),
+  knob: $('stick-knob'),
+  jump: $('btn-jump'),
+  dash: $('btn-dash'),
+  grab: $('btn-grab'),
+});
 
 const bindCommand = (el, name) => {
   // pointerdown plutôt que click : réaction immédiate, et le bouton ne prend
@@ -56,16 +63,29 @@ function setTouch(on) {
   layout();
 }
 
+/** Hauteur de l'encoche en haut de l'écran (px CSS). */
+function safeTop() {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;top:0;height:env(safe-area-inset-top,0px);visibility:hidden';
+  document.body.append(probe);
+  const h = probe.getBoundingClientRect().height;
+  probe.remove();
+  return h;
+}
+
+/** L'image remplit l'écran ; en tactile, la pièce laisse la place aux commandes. */
 function layout() {
   const touch = document.body.classList.contains('touch');
-  const bar = 44;
-  const below = touch ? 150 : 28; // commandes tactiles, ou ligne d'aide clavier
-  const w = window.innerWidth;
-  const h = window.innerHeight - bar - below - 8;
-  const scale = fitCanvas(canvas, w, h);
+  const vv = window.visualViewport;
+  const w = vv ? vv.width : window.innerWidth;
+  const h = vv ? vv.height : window.innerHeight;
+  const dpr = window.devicePixelRatio || 1;
+  const portrait = h > w;
+  computeView(w, h, { dpr, safeTop: safeTop(), controls: touch && portrait ? 210 : 0 });
+  fitCanvas(canvas, dpr);
   // Les écrans d'interface sont dessinés en « pixels du jeu ».
-  $('frame').style.setProperty('--px', `${scale / (window.devicePixelRatio || 1)}px`);
-  if (renderer && renderer.scale !== scale) renderer.resize(scale);
+  $('frame').style.setProperty('--px', `${view.scale / dpr}px`);
+  renderer?.resize(view.scale, renderer.quality, view);
 }
 
 // Qualité : forcée par l'adresse (?qualite=basse|haute), sinon adaptative.
@@ -83,7 +103,7 @@ function watchPerformance(now) {
   frameTimes.length = 0;
   if (sorted[sorted.length >> 1] > 22) {
     quality = 'low';
-    renderer.resize(renderer.scale, quality);
+    renderer.resize(renderer.scale, quality, view);
   }
 }
 document.addEventListener('visibilitychange', () => { frameTimes.length = 0; lastFrame = 0; });
@@ -95,13 +115,14 @@ window.addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'touch' && !document.body.classList.contains('touch')) setTouch(true);
 });
 window.addEventListener('resize', layout);
+window.addEventListener('orientationchange', () => setTimeout(layout, 200));
 window.visualViewport?.addEventListener('resize', layout);
 
 // --- Jeu -----------------------------------------------------------------
 // La police pixel doit être chargée avant de peindre le moindre texte.
 await document.fonts.load('8px "Press Start 2P"', 'ÉCHO éà').catch(() => {});
 renderer = new Renderer(canvas);
-renderer.resize(1, quality);
+renderer.quality = quality;
 layout();
 const game = new Game({ levels: LEVELS, input, renderer, sound, save, menus });
 

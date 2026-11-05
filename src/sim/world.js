@@ -33,6 +33,8 @@ export class World {
    */
   constructor(level, echoes = [], attempt = 1) {
     this.level = level;
+    /** Capacités du niveau : 'walljump', 'grab', 'dash'. */
+    this.abilities = new Set(level.abilities);
     this.tick = 0;
     /** null, puis 'exit' (sortie atteinte) ou 'stay' (on reste sur le quai). */
     this.outcome = null;
@@ -124,7 +126,7 @@ export class World {
       if (cx >= ex.x && cx < ex.x + ex.w && feet > ex.y && feet <= ex.y + ex.h) {
         this.outcome = 'exit';
         this.emit('exit', p);
-      } else if (this.level.stay && p.actPressed && p.onGround) {
+      } else if (this.level.stay && (p.actPressed || p.downPressed) && p.onGround) {
         const z = this.level.stay;
         if (cx >= z.x && cx < z.x + z.w && feet > z.y && feet <= z.y + z.h) {
           this.outcome = 'stay';

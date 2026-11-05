@@ -17,7 +17,7 @@
 import { TILE, SUB, DOOR_TICKS } from '../sim/constants.js';
 import { C, ECHO_TINTS } from './palette.js';
 import { makeCanvas, rect, px, textSprite } from './pixel.js';
-import { VIEW_W, VIEW_H, LEVEL_Y } from './screen.js';
+import { VIEW_W, VIEW_H, LEVEL_Y, view as screenView, sceneBounds } from './screen.js';
 import { themeOf, paintTiles, floorRowBelow } from './themes.js';
 import { paintDecor } from './decor.js';
 import { Lighting } from './lighting.js';
@@ -33,9 +33,6 @@ export class Renderer {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d', { alpha: false });
     this.scale = 1;
-    this.pix = makeCanvas(VIEW_W, VIEW_H);
-    this.emis = makeCanvas(VIEW_W, VIEW_H);
-    this.hud = makeCanvas(VIEW_W, VIEW_H);
     this.lighting = new Lighting();
     this.scene = null;
     this.anim = new WeakMap();
@@ -53,14 +50,22 @@ export class Renderer {
    * on compose à la résolution interne et le navigateur agrandit sans lissage :
    * la lumière devient elle aussi « pixel », mais tout reste fluide.
    */
-  resize(scale, quality = this.quality ?? 'high') {
+  resize(scale, quality = this.quality ?? 'high', v = screenView) {
     this.scale = scale;
     this.quality = quality;
     const k = quality === 'high' ? scale : 1;
-    if (this.canvas.width === VIEW_W * k && this.vignette) return;
-    this.canvas.width = VIEW_W * k;
-    this.canvas.height = VIEW_H * k;
-    this.vignette = buildVignette(VIEW_W * k, VIEW_H * k);
+    const key = `${v.w}x${v.h}+${v.ox}+${v.oy}@${k}`;
+    if (key === this.sizeKey) return;
+    this.sizeKey = key;
+    this.view = { w: v.w, h: v.h, ox: v.ox, oy: v.oy };
+    this.canvas.width = v.w * k;
+    this.canvas.height = v.h * k;
+    this.pix = makeCanvas(v.w, v.h);
+    this.emis = makeCanvas(v.w, v.h);
+    this.hud = makeCanvas(v.w, v.h);
+    this.lighting.resize(v.w, v.h);
+    this.vignette = buildVignette(v.w * k, v.h * k);
+    this.scene = null;
   }
 
   /**
@@ -74,7 +79,8 @@ export class Renderer {
     this.lastNow = now;
     const t = this.time;
     const world = session.world;
-    if (!this.scene || this.scene.level !== session.level) this.scene = buildScene(session.level);
+    const v = this.view;
+    if (!this.scene || this.scene.level !== session.level) this.scene = buildScene(session.level, v);
     const scene = this.scene;
     const newTick = world.tick !== this.lastTick || this.trailWorld !== world;
     this.lastTick = world.tick;
@@ -83,9 +89,15 @@ export class Renderer {
     // --- Calques nets ------------------------------------------------------
     const P = this.pix.getContext('2d');
     const E = this.emis.getContext('2d');
+    // Les fonds sont à la taille de l'image ; tout le reste se dessine dans
+    // le repère de la scène, décalé de (ox, oy).
+    P.setTransform(1, 0, 0, 1, 0, 0);
     P.drawImage(scene.albedo, 0, 0);
-    E.clearRect(0, 0, VIEW_W, VIEW_H);
+    P.setTransform(1, 0, 0, 1, v.ox, v.oy);
+    E.setTransform(1, 0, 0, 1, 0, 0);
+    E.clearRect(0, 0, v.w, v.h);
     E.drawImage(scene.emissive, 0, 0);
+    E.setTransform(1, 0, 0, 1, v.ox, v.oy);
     this.drawStars(E, scene, t);
 
     const lights = [...scene.lights];
@@ -104,8 +116,8 @@ export class Renderer {
     this.drawReplayRipple(E, session, world);
 
     // --- Lumière -------------------------------------------------------------
-    const L = this.lighting.buildLightMap(scene.theme.ambient, lights, occluders, t);
-    const V = this.lighting.buildVolumes(volumes, lights, scene.fog, t);
+    const L = this.lighting.buildLightMap(scene.theme.ambient, lights, occluders, t, v.ox, v.oy);
+    const V = this.lighting.buildVolumes(volumes, lights, scene.fog, t, v.ox, v.oy);
     const [b1, b2, b3] = this.lighting.bloom(this.emis);
 
     // --- Composition à la résolution de l'écran ------------------------------
@@ -151,7 +163,11 @@ export class Renderer {
 
     // Interface, nette, par-dessus tout.
     if (!ui.hideHud) {
-      drawHud(this.hud.getContext('2d'), session, ui);
+      const hc = this.hud.getContext('2d');
+      hc.setTransform(1, 0, 0, 1, 0, 0);
+      hc.clearRect(0, 0, v.w, v.h);
+      hc.setTransform(1, 0, 0, 1, v.ox, v.oy);
+      drawHud(hc, session, { ...ui, bounds: sceneBounds(v) });
       D.imageSmoothingEnabled = false;
       D.drawImage(this.hud, 0, 0, W, H);
     }
@@ -172,6 +188,11 @@ export class Renderer {
       s.wasGround = a.onGround;
       if (a.onGround) s.walk += Math.abs(a.dx);
       s.scarf += (Math.abs(a.vx) - s.scarf) * 0.15;
+      // Images rémanentes du dash.
+      s.ghosts = (s.ghosts ?? []).filter((g) => world.tick - g.tick < 14);
+      if (a.dashing > 0 && !a.dead) {
+        s.ghosts.push({ x: a.x, y: a.y, frame: this.frameOf(a, world.tick), facing: a.facing, tick: world.tick });
+      }
       if (a.kind === 'echo' && world.tick % TRAIL_EVERY === 0) {
         let tr = this.trails.get(a);
         if (!tr) this.trails.set(a, (tr = []));
@@ -183,7 +204,9 @@ export class Renderer {
 
   frameOf(a, tick) {
     const s = this.anim.get(a);
-    if (!a.onGround) return a.vy < 0 ? 'jump' : 'fall';
+    if (a.climbing) return Math.floor(a.y / (5 * SUB)) % 2 ? 'climbB' : 'climbA';
+    if (a.sliding) return 'slide';
+    if (!a.onGround) return a.vy < 0 || a.dashing > 0 ? 'jump' : 'fall';
     if (s && s.land > 0) return 'land';
     if (Math.abs(a.vx) > 3) return WALK_CYCLE[Math.floor((s?.walk ?? 0) / (7 * SUB)) % WALK_CYCLE.length];
     return (tick % 100) < 55 ? 'idleA' : 'idleB';
@@ -192,6 +215,18 @@ export class Renderer {
   // --- Acteurs -----------------------------------------------------------------
 
   drawActors(P, E, world, alpha, lights, occluders, t) {
+    // Images rémanentes des dashs : chaudes pour le joueur, teintées pour les échos.
+    for (const a of world.actors) {
+      const s = this.anim.get(a);
+      if (!s?.ghosts?.length) continue;
+      const col = a.kind === 'echo' ? ECHO_TINTS[(a.attempt - 1) % ECHO_TINTS.length] : C.lamp2;
+      for (const g of s.ghosts) {
+        const age = world.tick - g.tick;
+        E.globalAlpha = Math.max(0, 0.5 - age * 0.04) * (a.kind === 'echo' ? 0.6 : 1);
+        E.drawImage(sprite(g.frame, g.facing, col), Math.round(g.x / SUB) + SPRITE_DX, Math.round(g.y / SUB) + LEVEL_Y);
+      }
+      E.globalAlpha = 1;
+    }
     // Échos d'abord (traînées, puis silhouettes lumineuses), le joueur ensuite.
     for (const a of world.actors) {
       if (a.kind !== 'echo') continue;
@@ -229,6 +264,17 @@ export class Renderer {
     }
     P.drawImage(sprite(frame, p.facing, C.silhouette), sx, sy);
     this.drawScarf(P, p, x, y, C.silhouette, 1, t);
+    // L'écharpe s'allume quand un dash est disponible.
+    if (world.abilities.has('dash')) {
+      this.drawScarf(E, p, x, y, p.dashes > 0 ? C.lamp2 : C.night4, p.dashes > 0 ? 0.9 : 0.35, t);
+      if (p.dashes > 0) lights.push({ x: x + 5 - p.facing * 4, y: sy + 8, r: 16, color: C.lamp1, intensity: 0.35, flicker: 0, shadows: false, halo: 0.3 });
+    }
+    // Endurance presque épuisée : la silhouette clignote en rouge.
+    if (p.climbing && p.stamina < 90 && (world.tick >> 2) & 1) {
+      E.globalAlpha = 0.9;
+      E.drawImage(rimSprite(frame, p.facing, -p.facing, C.signalRed), sx, sy);
+      E.globalAlpha = 1;
+    }
     occluders.push({ x: x + 1, y: sy + 1, w: p.w / SUB - 2, h: p.h / SUB - 1 });
 
     // Liseré de lumière du côté de la source la plus forte.
@@ -562,26 +608,30 @@ function lerpPos(a, alpha) {
 }
 
 /** Tout ce qui ne bouge pas dans une pièce, peint une seule fois. */
-export function buildScene(level) {
+export function buildScene(level, v = { w: VIEW_W, h: VIEW_H, ox: 0, oy: 0 }) {
   const theme = themeOf(level);
-  const albedo = makeCanvas(VIEW_W, VIEW_H);
-  const emissive = makeCanvas(VIEW_W, VIEW_H);
+  const B = sceneBounds(v);
+  const albedo = makeCanvas(v.w, v.h);
+  const emissive = makeCanvas(v.w, v.h);
   const A = albedo.getContext('2d');
   const Em = emissive.getContext('2d');
+  A.translate(v.ox, v.oy);
+  Em.translate(v.ox, v.oy);
   const out = { lights: [], volumes: [] };
 
   // Le fond lointain (ciel, étoiles, ville) a son propre calque émissif :
   // on n'en garde que ce qui reste visible une fois le décor et les murs posés.
-  const far = makeCanvas(VIEW_W, VIEW_H);
+  const far = makeCanvas(v.w, v.h);
   const farCtx = far.getContext('2d');
-  theme.backdrop(level, A, farCtx, out.lights, theme);
-  const before = A.getImageData(0, 0, VIEW_W, VIEW_H).data;
+  farCtx.translate(v.ox, v.oy);
+  theme.backdrop(level, A, farCtx, out.lights, theme, B);
+  const before = A.getImageData(0, 0, v.w, v.h).data;
   paintDecor(level, A, Em, out);
-  paintTiles(level, theme, A);
+  paintTiles(level, theme, A, B);
   paintDecor(level, A, Em, out, 'front');
-  const after = A.getImageData(0, 0, VIEW_W, VIEW_H).data;
-  const visible = new Uint8Array(VIEW_W * VIEW_H);
-  const farImg = farCtx.getImageData(0, 0, VIEW_W, VIEW_H);
+  const after = A.getImageData(0, 0, v.w, v.h).data;
+  const visible = new Uint8Array(v.w * v.h);
+  const farImg = farCtx.getImageData(0, 0, v.w, v.h);
   for (let i = 0; i < visible.length; i++) {
     const k = i * 4;
     visible[i] = before[k] === after[k] && before[k + 1] === after[k + 1] && before[k + 2] === after[k + 2] ? 1 : 0;
@@ -589,7 +639,9 @@ export function buildScene(level) {
   }
   farCtx.putImageData(farImg, 0, 0);
   Em.globalCompositeOperation = 'destination-over';
+  Em.setTransform(1, 0, 0, 1, 0, 0);
   Em.drawImage(far, 0, 0);
+  Em.setTransform(1, 0, 0, 1, v.ox, v.oy);
   Em.globalCompositeOperation = 'source-over';
 
   // Encadrement de la sortie (bois) et rayons qui s'en échappent.
@@ -609,7 +661,7 @@ export function buildScene(level) {
   if (level.theme === 'quai') {
     for (let i = 0; i < 18; i++) {
       const s = { x: (i * 53 + 17) % VIEW_W, y: 6 + ((i * 37) % 150), speed: 1 + (i % 4) * 0.7, phase: i * 1.9 };
-      if (visible[s.y * VIEW_W + s.x]) twinkles.push(s);
+      if (visible[(s.y + v.oy) * v.w + s.x + v.ox]) twinkles.push(s);
     }
   }
 

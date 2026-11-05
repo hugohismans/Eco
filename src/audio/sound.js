@@ -179,10 +179,11 @@ export class Sound {
   }
 
   /** État des boucles continues, une fois par tick. */
-  update({ pushing, lift, laser }) {
+  update({ pushing, lift, laser, sliding }) {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
-    this.pushGain.gain.setTargetAtTime(pushing ? 0.09 : 0, t, 0.04);
+    // La glissade le long d'un mur réutilise le frottement, plus aigu et plus doux.
+    this.pushGain.gain.setTargetAtTime(pushing ? 0.09 : sliding ? 0.05 : 0, t, 0.04);
     this.liftGain.gain.setTargetAtTime(lift ? 0.05 : 0, t, 0.1);
     this.laserGain.gain.setTargetAtTime(laser ? 0.022 : 0, t, 0.15);
     // Carillon lointain, de temps en temps (réglé sur l'horloge audio).
@@ -261,6 +262,21 @@ export class Sound {
     switch (type) {
       case 'jump':
         this.tone({ type: echo ? 'triangle' : 'square', f: 290, to: 540, dur: 0.09, gain: 0.05 * v, lp: lp ?? 2600 });
+        break;
+      case 'dash':
+        // Ruée : souffle qui monte, petite note claquante.
+        this.noise({ f: 700, to: 3200, q: 1.1, dur: 0.18, gain: 0.09 * v, wet: 0.25 });
+        this.tone({ type: echo ? 'triangle' : 'square', f: 520, to: 1040, dur: 0.07, gain: 0.035 * v, lp: lp ?? 3000 });
+        break;
+      case 'walljump':
+        this.noise({ type: 'lowpass', f: 900, dur: 0.05, gain: 0.07 * v, wet: 0.1 });
+        this.tone({ type: echo ? 'triangle' : 'square', f: 340, to: 620, dur: 0.09, gain: 0.05 * v, lp: lp ?? 2600 });
+        break;
+      case 'grab':
+        this.noise({ type: 'lowpass', f: 600, dur: 0.04, gain: 0.06 * v, wet: 0.05 });
+        break;
+      case 'tired':
+        this.tone({ type: 'triangle', f: 300, to: 180, dur: 0.18, gain: 0.04 * v, wet: 0.2 });
         break;
       case 'land':
         this.noise({ type: 'lowpass', f: 420, dur: 0.06, gain: 0.09 * v, wet: 0.1 });

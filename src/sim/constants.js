@@ -30,6 +30,10 @@ export const IN_LEFT = 1;
 export const IN_RIGHT = 2;
 export const IN_JUMP = 4;
 export const IN_ACT = 8;
+export const IN_UP = 16;
+export const IN_DOWN = 32;
+export const IN_DASH = 64;
+export const IN_GRAB = 128;
 
 // --- Types de cases ------------------------------------------------------
 export const T_EMPTY = 0;
@@ -93,3 +97,38 @@ export const BEAM_HALF = 1 * SUB;
 
 /** Délai entre la chute du joueur dans un faisceau et la reprise (ticks). */
 export const DEATH_TICKS = 50;
+
+// --- Capacités débloquées au fil des niveaux --------------------------------
+// Chaque niveau déclare celles dont on dispose : "walljump", "grab", "dash".
+export const ABILITIES = ['walljump', 'grab', 'dash'];
+
+/** Glissade le long d'un mur (vitesse de chute plafonnée). */
+export const WALL_SLIDE_MAX = 40;
+/** Distance de détection d'un mur à côté de soi. */
+export const WALL_PROBE = 2 * SUB;
+/** Saut au mur : élan horizontal, et durée pendant laquelle on ne peut pas revenir vers le mur. */
+export const WALLJUMP_VX = 30;
+export const WALLJUMP_LOCK = 10;
+
+/** Escalade : vitesses, endurance (en ticks d'agrippement immobile). */
+export const CLIMB_UP = 12;
+export const CLIMB_DOWN = 24;
+export const STAMINA_MAX = 300;
+export const STAMINA_STILL = 1;
+export const STAMINA_UP = 3;
+export const STAMINA_CLIMBJUMP = 100;
+/** Après un saut depuis le mur, on ne se raccroche pas tout de suite. */
+export const GRAB_LOCK = 12;
+/** Petit bond en haut d'un mur, pour se hisser sur le rebord. */
+export const LEDGE_HOP_VY = 64;
+export const LEDGE_HOP_VX = 20;
+
+/** Dash : vitesse (droite et diagonale), durée, élan conservé à la fin. */
+export const DASH_SPEED = 64;
+export const DASH_DIAG = 45;
+export const DASH_TICKS = 10;
+export const DASH_END_VY_UP = 32;
+export const DASH_END_MAX_VX = 30;
+
+/** Coin de plafond rattrapé en sautant : décalage maximal (px). */
+export const CORNER_NUDGE = 4;

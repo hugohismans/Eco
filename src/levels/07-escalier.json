@@ -1,0 +1,36 @@
+{
+  "id": "escalier",
+  "name": "La cage d'escalier",
+  "theme": "hall",
+  "narration": "Les murs aussi se souviennent. (provisoire)",
+  "duration": 10,
+  "abilities": ["walljump"],
+  "teach": "walljump",
+  "doors": {"1": {"buttons": ["a"], "mode": "or"}},
+  "grid": [
+    "##############",
+    "##############",
+    "######...1..E#",
+    "######...1..E#",
+    "######..######",
+    "######..######",
+    "######..######",
+    "######..######",
+    "######..######",
+    "######..######",
+    "######..######",
+    "######..######",
+    "#.......######",
+    "#.......######",
+    "#.......######",
+    "#P..a...######",
+    "##############",
+    "##############"
+  ],
+  "decor": [
+    {"type": "pendant", "col": 3, "row": 12, "cable": 20},
+    {"type": "walllamp", "col": 10, "row": 2, "dy": -6},
+    {"type": "poster", "col": 2, "row": 13, "cols": 1, "rows": 2, "variant": "texte"},
+    {"type": "sign", "col": 1, "row": 11, "dy": 6, "text": "ETAGE"}
+  ]
+}

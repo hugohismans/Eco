@@ -26,12 +26,19 @@ export function flicker(seed, t) {
 
 export class Lighting {
   constructor() {
-    this.light = makeCanvas(VIEW_W, VIEW_H);
-    this.volume = makeCanvas(VIEW_W, VIEW_H);
     this.temp = makeCanvas(256, 256);
-    this.b1 = makeCanvas(VIEW_W / 2, VIEW_H / 2);
-    this.b2 = makeCanvas(VIEW_W / 4, VIEW_H / 4);
-    this.b3 = makeCanvas(VIEW_W / 8, VIEW_H / 8);
+    this.resize(VIEW_W, VIEW_H);
+  }
+
+  /** Taille des calques : celle de l'image affichée (pixels du jeu). */
+  resize(w, h) {
+    this.w = w;
+    this.h = h;
+    this.light = makeCanvas(w, h);
+    this.volume = makeCanvas(w, h);
+    this.b1 = makeCanvas(w / 2, h / 2);
+    this.b2 = makeCanvas(w / 4, h / 4);
+    this.b3 = makeCanvas(w / 8, h / 8);
   }
 
   /**
@@ -41,11 +48,13 @@ export class Lighting {
    * @param {{x:number,y:number,w:number,h:number}[]} occluders ce qui porte ombre
    * @param {number} t temps (s)
    */
-  buildLightMap(ambient, lights, occluders, t) {
+  buildLightMap(ambient, lights, occluders, t, ox = 0, oy = 0) {
     const ctx = this.light.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = ambient;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    ctx.fillRect(0, 0, this.w, this.h);
+    ctx.setTransform(1, 0, 0, 1, ox, oy);
     ctx.globalCompositeOperation = 'lighter';
     for (const L of lights) {
       const I = L.intensity * flicker(L.flicker, t);
@@ -83,10 +92,12 @@ export class Lighting {
    * @param {{color:string, alpha:number, floorY:number}|null} fog brume
    * @param {number} t temps (s)
    */
-  buildVolumes(volumes, lights, fog, t) {
+  buildVolumes(volumes, lights, fog, t, ox = 0, oy = 0) {
     const ctx = this.volume.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalCompositeOperation = 'source-over';
-    ctx.clearRect(0, 0, VIEW_W, VIEW_H);
+    ctx.clearRect(0, 0, this.w, this.h);
+    ctx.setTransform(1, 0, 0, 1, ox, oy);
     ctx.globalCompositeOperation = 'lighter';
 
     for (const v of volumes) {
@@ -153,8 +164,9 @@ export class Lighting {
 
     // Brume rasante qui dérive lentement.
     if (fog) {
-      for (let i = 0; i < 5; i++) {
-        const x = ((i * 61 + t * (4 + i)) % (VIEW_W + 120)) - 60;
+      const n = Math.ceil(this.w / 45);
+      for (let i = 0; i < n; i++) {
+        const x = ((i * 61 + t * (4 + i)) % (this.w + 120)) - 60 - ox;
         const y = fog.floorY - 6 + Math.sin(t * 0.3 + i) * 3;
         ctx.save();
         ctx.translate(x, y);

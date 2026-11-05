@@ -1,5 +1,6 @@
-/* Mise en page : écran de jeu en haut, commandes en dessous.
-   Mobile d'abord (portrait) ; sur ordinateur, les commandes tactiles disparaissent. */
+/* Mise en page : le jeu occupe tout l'écran ; les commandes sont posées
+   par-dessus, en transparence. Sur ordinateur, les commandes tactiles
+   disparaissent. */
 
 :root {
   --night: #080c1d;
@@ -8,7 +9,10 @@
   --lamp-soft: #ffd89a;
   --text: #f4e2c0;
   --text-dim: #8d93b8;
-  --bar-h: 44px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
   color-scheme: dark;
 }
 
@@ -26,23 +30,18 @@ html, body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
 }
 
-#app {
+#frame {
+  --px: 2px;
+  position: fixed;
+  inset: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  height: 100%;
-  height: 100dvh;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-}
-
-#stage {
-  display: flex;
   justify-content: center;
-  align-items: flex-start;
-  flex: none;
-  padding-top: 8px;
+  line-height: 0;
+  overflow: hidden;
 }
 
 #screen {
@@ -52,131 +51,128 @@ html, body {
   background: var(--night);
 }
 
-#bar {
+/* --- Commandes (calque transparent) --------------------------------------- */
+#controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  line-height: 1.4;
+}
+#controls button { pointer-events: auto; font: inherit; }
+
+/* Boutons « Rejouer / Effacer / Menu » : discrets, en bas au centre. */
+#actions {
+  position: absolute;
+  left: 50%;
+  bottom: calc(10px + var(--safe-bottom));
+  transform: translateX(-50%);
   display: flex;
   gap: 8px;
-  justify-content: center;
-  align-items: center;
-  height: var(--bar-h);
-  flex: none;
 }
-
-/* Boutons « pixel » : bord en escalier, ombre portée nette, sans arrondi. */
-#bar button {
-  font: inherit;
-  font-size: 10px;
+#actions button {
+  font-size: 9px;
   line-height: 1;
   color: var(--text);
-  background: var(--night-2);
+  background: rgba(8, 12, 29, 0.45);
   border: none;
-  padding: 9px 12px 8px;
+  padding: 8px 10px 7px;
   cursor: pointer;
-  box-shadow:
-    0 -3px 0 0 #2b3768, 0 3px 0 0 #2b3768, -3px 0 0 0 #2b3768, 3px 0 0 0 #2b3768,
-    0 6px 0 0 #05060f;
-  margin: 0 4px;
+  box-shadow: 0 0 0 2px rgba(255, 208, 137, 0.28);
+  backdrop-filter: blur(2px);
 }
-#bar button:hover { color: var(--lamp-soft); }
-#bar button:active {
-  transform: translateY(2px);
-  box-shadow:
-    0 -3px 0 0 var(--lamp), 0 3px 0 0 var(--lamp), -3px 0 0 0 var(--lamp), 3px 0 0 0 var(--lamp);
-}
-kbd {
-  font: inherit;
-  font-size: 8px;
-  color: var(--text-dim);
-  margin-left: 4px;
-}
+#actions button:hover { color: var(--lamp-soft); box-shadow: 0 0 0 2px rgba(255, 208, 137, 0.6); }
+#actions button:active { background: rgba(255, 179, 92, 0.3); }
+kbd { font: inherit; font-size: 7px; color: var(--text-dim); margin-left: 6px; }
 
 #keys-hint {
-  margin: 6px 0 0;
+  position: absolute;
+  left: calc(12px + var(--safe-left));
+  bottom: calc(44px + var(--safe-bottom));
+  margin: 0;
   font-size: 8px;
-  line-height: 1.6;
-  color: var(--text-dim);
+  line-height: 1.8;
+  color: rgba(141, 147, 184, 0.75);
+  text-shadow: 1px 1px 0 #05060f;
 }
 
-/* --- Commandes tactiles ---------------------------------------------- */
-#pad { display: none; }
-
-body.touch #keys-hint,
-body.touch kbd { display: none; }
-
-body.touch #pad {
-  display: flex;
-  flex: 1;
-  width: 100%;
-  min-height: 140px;
-}
-
-#stick-zone {
-  position: relative;
-  flex: 1;
+/* Tactile : joystick et boutons. */
+#stick-zone, #pad-buttons { display: none; }
+body.touch #keys-hint, body.touch kbd { display: none; }
+body.touch #stick-zone {
+  display: block;
+  position: absolute;
+  left: 0;
+  bottom: calc(44px + var(--safe-bottom));
+  width: 55%;
+  height: 46%;
+  pointer-events: auto;
   touch-action: none;
 }
-#stick-zone::after {
-  content: "";
+#stick-ghost, #stick-base {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 84px;
-  height: 84px;
-  margin: -42px 0 0 -42px;
-  border: 2px dashed #2b3768;
+  width: 96px;
+  height: 96px;
+  margin: -48px 0 0 -48px;
   border-radius: 50%;
   pointer-events: none;
+}
+#stick-ghost {
+  left: calc(84px + var(--safe-left));
+  top: calc(100% - 70px);
+  border: 2px dashed rgba(255, 208, 137, 0.22);
 }
 #stick-base {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 84px;
-  height: 84px;
-  margin: -42px 0 0 -42px;
-  border: 2px solid #3a4a88;
-  border-radius: 50%;
+  border: 2px solid rgba(255, 208, 137, 0.45);
+  background: rgba(8, 12, 29, 0.18);
   opacity: 0;
-  pointer-events: none;
 }
 #stick-base.active { opacity: 1; }
-#stick-zone:has(#stick-base.active)::after { opacity: 0; }
+#stick-zone:has(#stick-base.active) #stick-ghost { opacity: 0; }
 #stick-knob {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 36px;
-  height: 36px;
-  margin: -18px 0 0 -18px;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
   border-radius: 50%;
-  background: var(--lamp);
-  opacity: 0.8;
+  background: rgba(255, 179, 92, 0.5);
+  box-shadow: 0 0 14px rgba(255, 179, 92, 0.4);
 }
 
-#btn-jump {
-  align-self: center;
-  width: 96px;
-  height: 96px;
-  margin: 0 24px;
-  border-radius: 50%;
-  border: 3px solid var(--lamp);
-  background: rgba(255, 179, 92, 0.12);
-  color: var(--lamp-soft);
-  font: inherit;
-  font-size: 11px;
-  touch-action: none;
-  box-shadow: 0 0 24px rgba(255, 179, 92, 0.25), inset 0 0 18px rgba(255, 179, 92, 0.15);
+body.touch #pad-buttons {
+  display: block;
+  position: absolute;
+  right: calc(14px + var(--safe-right));
+  bottom: calc(48px + var(--safe-bottom));
+  width: 190px;
+  height: 170px;
 }
-#btn-jump.pressed { background: rgba(255, 179, 92, 0.4); }
+.pad-btn {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 208, 137, 0.45);
+  background: rgba(8, 12, 29, 0.22);
+  color: rgba(255, 240, 200, 0.85);
+  font-size: 8px;
+  touch-action: none;
+  text-shadow: 1px 1px 0 #05060f;
+}
+.pad-btn.big { width: 84px; height: 84px; right: 0; bottom: 0; font-size: 10px; border-width: 3px; }
+#btn-dash { right: 92px; bottom: 6px; }
+#btn-grab { right: 12px; bottom: 94px; }
+.pad-btn.pressed { background: rgba(255, 179, 92, 0.35); border-color: rgba(255, 220, 160, 0.9); }
+/* Boutons des capacités : seulement quand le niveau les donne. */
+.ab-dash, .ab-grab { visibility: hidden; }
+body.can-dash .ab-dash, body.can-grab .ab-grab { visibility: visible; }
+
+body.menu #controls { visibility: hidden; }
 
 /* --- Écrans d'interface (titre, niveaux, pause, réussite, fin) -----------
    Tout est mesuré en « pixels du jeu » : --px vaut la taille d'un pixel du
    jeu à l'écran. La police pixel tombe ainsi pile sur la grille de l'image. */
-
-#frame {
-  --px: 2px;
-  position: relative;
-  line-height: 0;
-}
 
 #overlay {
   position: absolute;
@@ -191,9 +187,6 @@ body.touch #pad {
 }
 #overlay[hidden] { display: none; }
 
-body.menu #bar,
-body.menu #pad,
-body.menu #keys-hint { visibility: hidden; }
 
 .ui-screen {
   display: flex;
@@ -354,3 +347,20 @@ body.menu #keys-hint { visibility: hidden; }
   background: linear-gradient(to bottom, rgba(5, 6, 15, 0.55), rgba(5, 6, 15, 0) 45%, rgba(5, 6, 15, 0) 60%, rgba(5, 6, 15, 0.6));
 }
 .ui-title .ui-sub { margin-top: calc(4 * var(--px)); }
+/* Les écrans d'interface restent à la largeur de la pièce, centrés. */
+#overlay .ui-screen { max-width: calc(232 * var(--px)); margin: 0 auto; }
+/* Écran en largeur (ordinateur, téléphone tourné) : actions en haut à droite. */
+@media (orientation: landscape) {
+  #actions {
+    left: auto;
+    right: calc(12px + var(--safe-right));
+    top: calc(10px + var(--safe-top));
+    bottom: auto;
+    transform: none;
+  }
+  #keys-hint { bottom: calc(14px + var(--safe-bottom)); }
+}
+.pad-btn { padding: 0; }
+.pad-btn:not(.big) { font-size: 7px; }
+#controls .pad-btn { font-size: 7px; letter-spacing: -0.5px; }
+#controls .pad-btn.big { font-size: 10px; letter-spacing: 0; }

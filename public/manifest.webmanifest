@@ -1,0 +1,12 @@
+{
+  "name": "Écho",
+  "short_name": "Écho",
+  "description": "Un puzzle de gare, la nuit, avec les échos de ses tentatives.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#080c1d",
+  "theme_color": "#080c1d",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

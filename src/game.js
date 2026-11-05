@@ -85,12 +85,33 @@ export class Game {
   /** Lance un niveau (sans vérifier le verrou : l'adresse #niveau=N le permet). */
   play(index) {
     this.menus.hide();
+    // Sur téléphone, on passe en plein écran (là où le navigateur le permet ;
+    // sur iPhone, il faut « Ajouter à l'écran d'accueil »).
+    const root = document.documentElement;
+    if (document.body.classList.contains('touch') && root.requestFullscreen && !document.fullscreenElement) {
+      root.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+    }
     this.index = Math.max(0, Math.min(index, this.levels.length - 1));
     const level = this.levels[this.index];
     this.session = new Session(level);
     this.save.setLast(level.id);
     this.sound.setTheme(level.theme);
+    this.showControlsFor(level);
     this.setMode('playing');
+  }
+
+  /** Boutons tactiles et aide clavier selon les capacités du niveau. */
+  showControlsFor(level) {
+    const ab = new Set(level.abilities);
+    document.body.classList.toggle('can-dash', ab.has('dash'));
+    document.body.classList.toggle('can-grab', ab.has('grab'));
+    const hint = document.getElementById('keys-hint');
+    if (!hint) return;
+    const lines = ['Flèches / ZQSD : bouger', 'Espace ou C : sauter'];
+    if (ab.has('dash')) lines.push('X : dash (+ direction)');
+    if (ab.has('grab')) lines.push('Z ou Maj : s\u2019agripper');
+    if (level.stay) lines.push('Bas ou E : rester');
+    hint.innerHTML = lines.join('<br>');
   }
 
   pause() {
@@ -200,6 +221,7 @@ export class Game {
     const w = s.world;
     this.sound.update({
       pushing: w.actors.some((a) => a.pushing),
+      sliding: w.player.sliding,
       lift: w.platforms.some((p) => p.moving),
       laser: w.lasers.some((l) => l.on),
     });
@@ -216,6 +238,7 @@ export class Game {
     this.renderer.draw(this.session, moving ? alpha : 1, {
       hideHud: this.mode === 'menu' || this.mode === 'won',
       fade,
+      touch: document.body.classList.contains('touch'),
     });
   }
 }

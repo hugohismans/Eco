@@ -18,7 +18,7 @@ export function levelThumb(level) {
   const ctx = img.getContext('2d');
   ctx.drawImage(scene.albedo, 0, 0);
   ctx.globalCompositeOperation = 'multiply';
-  ctx.drawImage(lighting.buildLightMap(scene.theme.ambient, scene.lights, [], 0), 0, 0);
+  ctx.drawImage(lighting.buildLightMap(scene.theme.ambient, scene.lights, [], 0, 0, 0), 0, 0);
   ctx.globalCompositeOperation = 'lighter';
   ctx.drawImage(scene.emissive, 0, 0);
   ctx.globalCompositeOperation = 'source-over';

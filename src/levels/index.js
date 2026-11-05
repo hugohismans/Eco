@@ -6,6 +6,9 @@ import guichets from './03-guichets.json';
 import attente from './04-attente.json';
 import souterrain from './05-souterrain.json';
 import voie from './06-voie.json';
-import train from './07-train.json';
+import escalier from './07-escalier.json';
+import chateau from './08-chateau.json';
+import depot from './09-depot.json';
+import train from './10-train.json';
 
-export const LEVELS = [quai, hall, guichets, attente, souterrain, voie, train];
+export const LEVELS = [quai, hall, guichets, attente, souterrain, voie, escalier, chateau, depot, train];
