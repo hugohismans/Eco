@@ -1,0 +1,157 @@
+/* Mise en page : écran de jeu en haut, commandes en dessous.
+   Mobile d'abord (portrait) ; sur ordinateur, les commandes tactiles disparaissent. */
+
+:root {
+  --night: #080c1d;
+  --night-2: #141d3f;
+  --lamp: #ffb35c;
+  --lamp-soft: #ffd89a;
+  --text: #f4e2c0;
+  --text-dim: #8d93b8;
+  --bar-h: 44px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--night);
+  color: var(--text);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+#stage {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  flex: none;
+  padding-top: 8px;
+}
+
+#screen {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: var(--night);
+}
+
+#bar {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  height: var(--bar-h);
+  flex: none;
+}
+
+#bar button {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--night-2);
+  border: 2px solid #2b3768;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+#bar button:active { border-color: var(--lamp); }
+kbd {
+  font: inherit;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-left: 4px;
+}
+
+#keys-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* --- Commandes tactiles ---------------------------------------------- */
+#pad { display: none; }
+
+body.touch #keys-hint,
+body.touch kbd { display: none; }
+
+body.touch #pad {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-height: 140px;
+}
+
+#stick-zone {
+  position: relative;
+  flex: 1;
+  touch-action: none;
+}
+#stick-zone::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  border: 2px dashed #2b3768;
+  border-radius: 50%;
+  pointer-events: none;
+}
+#stick-base {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  border: 2px solid #3a4a88;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+#stick-base.active { opacity: 1; }
+#stick-zone:has(#stick-base.active)::after { opacity: 0; }
+#stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  border-radius: 50%;
+  background: var(--lamp);
+  opacity: 0.8;
+}
+
+#btn-jump {
+  align-self: center;
+  width: 96px;
+  height: 96px;
+  margin: 0 24px;
+  border-radius: 50%;
+  border: 3px solid var(--lamp);
+  background: rgba(255, 179, 92, 0.12);
+  color: var(--lamp-soft);
+  font: inherit;
+  font-size: 15px;
+  touch-action: none;
+}
+#btn-jump.pressed { background: rgba(255, 179, 92, 0.4); }

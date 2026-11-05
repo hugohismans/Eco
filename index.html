@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#080c1d" />
+    <meta name="description" content="Écho : un puzzle game en pixel art où l'on coopère avec les échos de ses tentatives précédentes." />
+    <title>Écho</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main id="app">
+      <div id="stage">
+        <canvas id="screen" aria-label="Écho, écran de jeu"></canvas>
+      </div>
+
+      <div id="bar">
+        <button id="btn-replay" type="button" tabindex="-1">Rejouer <kbd>R</kbd></button>
+        <button id="btn-restart" type="button" tabindex="-1">Recommencer <kbd>⌫</kbd></button>
+      </div>
+
+      <div id="pad" aria-hidden="true">
+        <div id="stick-zone">
+          <div id="stick-base"><div id="stick-knob"></div></div>
+        </div>
+        <button id="btn-jump" type="button" tabindex="-1">Saut</button>
+      </div>
+
+      <p id="keys-hint">← → ou A D / Q D : marcher · Espace ou ↑ : sauter</p>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
