@@ -1,0 +1,39 @@
+{
+  "id": "train",
+  "name": "Le dernier train",
+  "theme": "train",
+  "narration": "Le dernier train. Cette fois, il attend. (provisoire)",
+  "duration": null,
+  "doors": {"1": {"buttons": ["a"], "mode": "or"}},
+  "platforms": [{"col": 10, "row": 16, "cols": 1, "to": {"col": 10, "row": 12}, "buttons": ["b"], "mode": "or", "behavior": "loop"}],
+  "stay": {"col": 6, "row": 15, "cols": 2},
+  "exitStyle": "train",
+  "endings": {"exit": "Cette fois, je monte. (provisoire)", "stay": "Je reste. Le quai est doux, la nuit. (provisoire)"},
+  "grid": [
+    "..............",
+    "..............",
+    "..............",
+    "..............",
+    "..............",
+    "..............",
+    "..............",
+    "..............",
+    ".PbB..........",
+    "#####....#....",
+    ".........1..E.",
+    ".........1..E.",
+    ".........1.###",
+    ".........1.###",
+    ".........1.###",
+    ">.......a1.###",
+    "##########.###",
+    "##############"
+  ],
+  "decor": [
+    {"type": "train", "col": 11, "row": 6, "cols": 3, "rows": 10, "layer": "front"},
+    {"type": "lamp", "col": 4, "row": 11},
+    {"type": "canopy", "col": 0, "row": 5, "cols": 7, "pillars": [0, 4]},
+    {"type": "pendant", "col": 2, "row": 6, "cable": 12},
+    {"type": "bench", "col": 6, "row": 15}
+  ]
+}

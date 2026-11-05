@@ -55,6 +55,56 @@ export const THEMES = {
     tiles: 'brick',
     wet: true,
     backdrop: paintInterior,
+    wall: '#86695a',
+    wallDark: '#6e5649',
+    pilasters: true,
+  },
+  /** Les guichets : boiseries plus sombres, enduit chaud. */
+  guichets: {
+    ambient: '#424780',
+    fog: null,
+    tiles: 'brick',
+    wet: true,
+    backdrop: paintInterior,
+    wall: '#7d6450',
+    wallDark: '#684f3f',
+    pilasters: false,
+  },
+  /** La salle d'attente : papier peint vert à rayures, radiateur. */
+  attente: {
+    ambient: '#434a7c',
+    fog: null,
+    tiles: 'brick',
+    wet: true,
+    backdrop: paintInterior,
+    wall: '#5e6b52',
+    wallDark: '#4f5b45',
+    stripes: true,
+    pilasters: false,
+  },
+  /** Le souterrain : carreaux de faïence, béton, appliques grillagées. */
+  souterrain: {
+    ambient: '#3c4472',
+    fog: { color: '#8fa6d8', alpha: 0.08 },
+    tiles: 'concrete',
+    wet: true,
+    backdrop: paintTiled,
+  },
+  /** La voie : dehors, ballast et rails, portique de signalisation. */
+  voie: {
+    ambient: '#535d9a',
+    fog: { color: '#8fa6d8', alpha: 0.2 },
+    tiles: 'ballast',
+    wet: false,
+    backdrop: paintSky,
+  },
+  /** Le dernier train : le quai, la nuit, un train éclairé. */
+  train: {
+    ambient: '#56619f',
+    fog: { color: '#8fa6d8', alpha: 0.14 },
+    tiles: 'stone',
+    wet: true,
+    backdrop: paintSky,
   },
 };
 
@@ -135,14 +185,21 @@ function paintSky(level, A, Em, lights) {
 }
 
 /** Intérieur : enduit ocre, pilastres de briques, lambris et corniches. */
-function paintInterior(level, A, Em, lights) {
-  const wall = '#86695a';
-  const wallDark = '#6e5649';
+function paintInterior(level, A, Em, lights, theme) {
+  const wall = theme.wall;
+  const wallDark = theme.wallDark;
   rect(A, 0, 0, VIEW_W, VIEW_H, wall);
-  // Grain de l'enduit.
-  sparse(A, 0, 0, VIEW_W, VIEW_H, wallDark);
+  // Grain de l'enduit, ou rayures d'un papier peint.
+  if (theme.stripes) {
+    for (let x = 0; x < VIEW_W; x += 8) {
+      rect(A, x, 0, 3, VIEW_H, wallDark);
+      for (let y = (x >> 3) & 1 ? 4 : 0; y < VIEW_H; y += 8) px(A, x + 5, y, wallDark);
+    }
+  } else {
+    sparse(A, 0, 0, VIEW_W, VIEW_H, wallDark);
+  }
   // Pilastres de briques toutes les quatre cases.
-  for (let cx = 32; cx < VIEW_W; cx += 64) {
+  for (let cx = 32; theme.pilasters && cx < VIEW_W; cx += 64) {
     for (let y = 0; y < VIEW_H; y += 4) {
       rect(A, cx, y, 12, 3, C.brick3);
       rect(A, cx, y + 3, 12, 1, C.brick1);
@@ -173,6 +230,38 @@ function paintInterior(level, A, Em, lights) {
   }
 }
 
+/** Souterrain : faïence blanche biseautée, bandeau de couleur, béton en bas. */
+function paintTiled(level, A) {
+  const tile = '#a9a28e';
+  const grout = '#7d7768';
+  const hi = '#c4bda6';
+  rect(A, 0, 0, VIEW_W, VIEW_H, tile);
+  for (let y = 0; y < VIEW_H; y += 6) {
+    rect(A, 0, y + 5, VIEW_W, 1, grout);
+    const off = (y / 6) & 1 ? 6 : 0;
+    for (let x = off; x < VIEW_W; x += 12) {
+      rect(A, x, y, 1, 5, grout);
+      rect(A, x + 1, y, 10, 1, hi);
+    }
+  }
+  // Bandeau de carreaux bruns à mi-hauteur de chaque pièce, et soubassement.
+  for (let r = -2; r < GRID_H + 2; r++) {
+    for (let c = 0; c < GRID_W; c++) {
+      if (solidAt(level, c, r)) continue;
+      const x = c * TILE, y = LEVEL_Y + r * TILE;
+      if (solidAt(level, c, r + 1)) {
+        rect(A, x, y + 4, TILE, 12, C.stone2);
+        rect(A, x, y + 4, TILE, 1, C.stone3);
+        for (let k = 0; k < TILE; k += 4) px(A, x + k, y + 9, C.stone1);
+      }
+      if (solidAt(level, c, r + 3) && !solidAt(level, c, r + 2) && !solidAt(level, c, r + 1)) {
+        rect(A, x, y + 6, TILE, 3, C.brick3);
+        rect(A, x, y + 9, TILE, 1, C.brick1);
+      }
+    }
+  }
+}
+
 // --- Cases ----------------------------------------------------------------
 
 /** Peint les cases solides et les plateformes fines, avec leurs bords. */
@@ -183,6 +272,8 @@ export function paintTiles(level, theme, A) {
       const x = c * TILE, y = LEVEL_Y + r * TILE;
       if (t === T_SOLID) {
         if (theme.tiles === 'stone') paintStone(level, A, c, r, x, y);
+        else if (theme.tiles === 'concrete') paintConcrete(level, A, c, r, x, y);
+        else if (theme.tiles === 'ballast') paintBallast(level, A, c, r, x, y);
         else paintBrick(level, A, c, r, x, y);
       } else if (t === T_ONEWAY) {
         paintPlank(A, x, y);
@@ -260,6 +351,38 @@ function paintBrick(level, A, c, r, x, y) {
   }
   if (left) rect(A, x, y, 1, TILE, C.brick0);
   if (right) rect(A, x + TILE - 1, y, 1, TILE, C.brick0);
+}
+
+function paintConcrete(level, A, c, r, x, y) {
+  const top = !solidAt(level, c, r - 1);
+  rect(A, x, y, TILE, TILE, C.stone1);
+  sparse(A, x, y, TILE, TILE, C.stone2, c * 3 + r);
+  if (((c * 7 + r * 3) % 5) === 0) rect(A, x + 3, y + 6, 5, 1, C.stone0);
+  if (top) {
+    rect(A, x, y, TILE, 3, C.stone3);
+    rect(A, x, y, TILE, 1, C.stone4);
+    rect(A, x, y + 3, TILE, 1, C.stone0);
+  }
+  if (!solidAt(level, c - 1, r)) rect(A, x, y, 1, TILE, C.stone0);
+  if (!solidAt(level, c + 1, r)) rect(A, x + TILE - 1, y, 1, TILE, C.stone0);
+  if (!solidAt(level, c, r + 1)) rect(A, x, y + TILE - 1, TILE, 1, C.stone0);
+}
+
+/** Ballast et rails : traverses de bois, rail d'acier qui brille un peu. */
+function paintBallast(level, A, c, r, x, y) {
+  const top = !solidAt(level, c, r - 1);
+  rect(A, x, y, TILE, TILE, C.stone1);
+  for (let k = 0; k < 24; k++) {
+    const gx = (k * 7 + c * 5 + r * 3) % TILE, gy = (k * 11 + c * 3) % TILE;
+    px(A, x + gx, y + gy, k % 3 ? C.stone2 : C.stone0);
+  }
+  if (top) {
+    rect(A, x, y, TILE, 2, C.stone2);
+    // Traverse et rail vus de côté.
+    rect(A, x + 2, y - 2, 12, 2, C.wood1);
+    rect(A, x, y - 4, TILE, 2, C.iron2);
+    rect(A, x, y - 4, TILE, 1, C.stone4);
+  }
 }
 
 function paintPlank(A, x, y) {

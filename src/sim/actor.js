@@ -9,7 +9,7 @@
 import {
   ACTOR_W, ACTOR_H, RUN_SPEED, GROUND_ACCEL, GROUND_DECEL, AIR_ACCEL, AIR_DECEL,
   GRAVITY, MAX_FALL, JUMP_VEL, JUMP_MIN_TICKS, COYOTE_TICKS, JUMP_BUFFER_TICKS,
-  IN_LEFT, IN_RIGHT, IN_JUMP,
+  IN_LEFT, IN_RIGHT, IN_JUMP, IN_ACT, PUSH_SPEED,
 } from './constants.js';
 import { moveAxis, approach } from './physics.js';
 
@@ -55,6 +55,13 @@ export function createActor(spawn, index, tape, attempt) {
     input: 0,
     /** Vrai quand la bande d'un écho est terminée : il reste immobile. */
     finished: false,
+    /** Le joueur a touché un faisceau (les échos, eux, ne craignent rien). */
+    dead: false,
+    prevAct: false,
+    /** Vrai pendant le tick où l'on vient d'appuyer sur « interaction ». */
+    actPressed: false,
+    /** Vrai si l'acteur pousse une valise ce tick-ci. */
+    pushing: false,
   };
 }
 
@@ -76,6 +83,10 @@ export function stepActor(world, a, bits) {
   a.input = bits;
   const startX = a.x;
   const startY = a.y;
+  const act = (bits & IN_ACT) !== 0;
+  a.actPressed = act && !a.prevAct;
+  a.prevAct = act;
+  a.pushing = false;
 
   // 1. Porté par ce sur quoi on se tient (écho, plateforme mobile).
   const g = a.ground;
@@ -123,13 +134,25 @@ export function stepActor(world, a, bits) {
   // 4. Gravité puis déplacements, axe par axe.
   a.vy = Math.min(a.vy + GRAVITY, MAX_FALL);
 
-  if (moveAxis(world, a, 'x', a.vx)) a.vx = 0;
+  const hitX = moveAxis(world, a, 'x', a.vx);
+  if (hitX) {
+    if (hitX.kind === 'block' && a.onGround && a.vx !== 0) {
+      // Pousser une valise : elle avance lentement, on la suit.
+      const sign = a.vx > 0 ? 1 : -1;
+      const moved = world.pushBlock(hitX, sign * PUSH_SPEED);
+      if (moved !== 0) moveAxis(world, a, 'x', moved);
+      a.vx = sign * Math.min(Math.abs(a.vx), PUSH_SPEED);
+      a.pushing = moved !== 0;
+    } else {
+      a.vx = 0;
+    }
+  }
 
   const wasGround = a.onGround;
   const hitY = moveAxis(world, a, 'y', a.vy);
   if (hitY && a.vy > 0) {
     a.onGround = true;
-    // Tout ce qui se déplace (écho, plus tard plateformes et valises) expose dx/dy.
+    // Tout ce qui se déplace (écho, plateforme, valise) expose dx/dy.
     a.ground = typeof hitY.dx === 'number' ? hitY : STATIC_GROUND;
     if (!wasGround) world.emit('land', a);
   } else {

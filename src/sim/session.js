@@ -6,7 +6,7 @@
 // dernières bandes y sont rejouées en même temps que la nouvelle tentative.
 // « Recommencer » vide l'historique, donc efface tous les échos.
 
-import { MAX_ECHOES } from './constants.js';
+import { MAX_ECHOES, DEATH_TICKS } from './constants.js';
 import { World } from './world.js';
 
 export class Session {
@@ -23,6 +23,10 @@ export class Session {
     this.state = 'playing';
     /** Bande gagnante, une fois le niveau réussi. */
     this.winningTape = null;
+    /** 'exit' ou 'stay' : comment le niveau s'est terminé. */
+    this.outcome = null;
+    /** Ticks écoulés depuis que le joueur a touché un faisceau. */
+    this.deathTicks = 0;
     /** Événements de session depuis la dernière lecture : [{type}] */
     this.events = [];
     this.beginAttempt();
@@ -43,6 +47,7 @@ export class Session {
     this.attemptCount++;
     this.attempt = this.attemptCount;
     this.recording = [];
+    this.deathTicks = 0;
     this.world = new World(this.level, this.echoes, this.attempt);
   }
 
@@ -55,8 +60,19 @@ export class Session {
 
     if (this.world.won) {
       this.state = 'won';
+      this.outcome = this.world.outcome;
       this.winningTape = Uint8Array.from(this.recording);
-      this.events.push({ type: 'won' });
+      this.events.push({ type: 'won', outcome: this.outcome });
+      return;
+    }
+    // Le joueur a touché un faisceau : on reprend cette tentative sans
+    // l'enregistrer (elle ne devient pas un écho).
+    if (this.world.player.dead) {
+      this.deathTicks++;
+      if (this.deathTicks >= DEATH_TICKS) {
+        this.beginAttempt();
+        this.events.push({ type: 'retry' });
+      }
       return;
     }
     if (this.level.duration != null && this.world.tick >= this.level.duration) {
@@ -70,6 +86,7 @@ export class Session {
    */
   replay() {
     if (this.state !== 'playing' || this.recording.length === 0) return;
+    if (this.world.player.dead) return;
     this.history.push({ tape: Uint8Array.from(this.recording), attempt: this.attempt });
     this.beginAttempt();
     this.events.push({ type: 'replay' });

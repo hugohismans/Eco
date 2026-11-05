@@ -58,7 +58,10 @@ export class Game {
     if (this.mode === 'won') {
       overlay = { title: 'La porte s\u2019ouvre.', hint: touch ? 'Touchez pour continuer' : 'Espace pour continuer' };
     } else if (this.mode === 'end') {
-      overlay = { title: 'Fin de la démo. Merci !', hint: touch ? 'Touchez pour rejouer' : 'Espace pour rejouer' };
+      // Dernier niveau : la phrase de la fin choisie (monter, ou rester).
+      const endings = this.session.level.endings;
+      const title = endings?.[this.session.outcome] ?? 'Fin. Merci !';
+      overlay = { title, hint: touch ? 'Touchez pour revenir' : 'Espace pour revenir' };
     }
     // Après la réussite : la lumière de la porte envahit doucement l'écran.
     const fade = overlay ? Math.min(0.55, this.modeTicks / 50) : 0;

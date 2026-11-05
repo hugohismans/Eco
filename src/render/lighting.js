@@ -106,6 +106,19 @@ export class Lighting {
         // Une flaque large et aplatie, plus une traînée verticale étroite.
         softEllipse(ctx, v.x, v.y + 1, v.w * 0.8, 3, v.color, v.alpha * f);
         softEllipse(ctx, v.x, v.y, v.w * 0.22, v.h * 1.4, v.color, v.alpha * 0.8 * f);
+      } else if (v.type === 'beam') {
+        // Lueur d'un faisceau : bande douce de part et d'autre du rayon.
+        const horiz = v.y0 === v.y1;
+        const half = 7;
+        const g = horiz
+          ? ctx.createLinearGradient(0, v.y0 - half, 0, v.y0 + half)
+          : ctx.createLinearGradient(v.x0 - half, 0, v.x0 + half, 0);
+        g.addColorStop(0, rgba(v.color, 0));
+        g.addColorStop(0.5, rgba(v.color, v.alpha));
+        g.addColorStop(1, rgba(v.color, 0));
+        ctx.fillStyle = g;
+        if (horiz) ctx.fillRect(Math.min(v.x0, v.x1), v.y0 - half, Math.abs(v.x1 - v.x0), half * 2);
+        else ctx.fillRect(v.x0 - half, Math.min(v.y0, v.y1), half * 2, Math.abs(v.y1 - v.y0));
       } else if (v.type === 'rays') {
         // Rayons qui s'échappent d'une porte entrouverte.
         for (let i = 0; i < 5; i++) {

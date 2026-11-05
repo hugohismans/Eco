@@ -7,7 +7,9 @@
 //
 // Coordonnées : `col`, `row` en cases ; `dx`, `dy` décalage facultatif en px.
 
-import { TILE } from '../sim/constants.js';
+import { TILE, SUB } from '../sim/constants.js';
+
+const SUB_PX = SUB;
 import { C } from './palette.js';
 import { rect, px, checker, sparse, textSprite } from './pixel.js';
 import { LEVEL_Y } from './screen.js';
@@ -162,6 +164,10 @@ export const DECOR = {
       rect(A, x + 3, y + Math.floor(h * 0.38), w - 6, 3, C.night3);
       px(A, x + 4, y + Math.floor(h * 0.38) + 3, C.iron0);
       px(A, x + w - 5, y + Math.floor(h * 0.38) + 3, C.iron0);
+    } else if (v === 'texte') {
+      rect(A, x + 2, y + 3, w - 4, 4, C.brick3);
+      rect(A, x + 2, y + 9, w - 6, 1, C.paper0);
+      rect(A, x + 2, y + 11, w - 8, 1, C.paper0);
     } else if (v === 'mer') {
       rect(A, x + 2, y + 3, w - 4, h * 0.25, '#e8a86a');
       rect(A, x + 2, y + 3 + Math.floor(h * 0.25), w - 4, h * 0.25, '#5d8db0');
@@ -252,12 +258,182 @@ export const DECOR = {
     rect(A, x + 1, y + 1, w - 2, 11, '#2b4f9a');
     A.drawImage(textSprite(text, C.paper3, null), x + 3, y + 3);
   },
+
+  /** Guichet : comptoir de bois, vitre éclairée, hygiaphone, « BILLETS ». */
+  counter(d, level, A, Em, out) {
+    const x = cellX(d), y = cellY(d);
+    const w = (d.cols ?? 2) * TILE;
+    const fy = floorY(level, d.col, d.row);
+    // Caisson et fronton.
+    rect(A, x, y, w, fy - y, C.wood1);
+    rect(A, x - 2, y - 4, w + 4, 4, C.wood3);
+    rect(A, x - 2, y - 4, w + 4, 1, C.wood4);
+    // Plaque émaillée numérotée au-dessus du guichet.
+    const label = String(d.label ?? '1');
+    const pw = label.length * 8 + 6;
+    const plx = x + Math.round((w - pw) / 2);
+    rect(A, plx, y - 16, pw, 11, C.paper3);
+    rect(A, plx + 1, y - 15, pw - 2, 9, '#2b4f9a');
+    A.drawImage(textSprite(label, C.paper3, null), plx + 3, y - 15);
+    // Vitre (émissif chaud) avec la silhouette vide d'une chaise.
+    const gx = x + 4, gy = y + 3, gw = w - 8, gh = 18;
+    rect(A, gx, gy, gw, gh, C.ink);
+    rect(Em, gx, gy, gw, gh, C.lamp0);
+    rect(Em, gx + 1, gy + 1, gw - 2, gh - 6, C.lamp1);
+    rect(Em, gx + 2, gy + 2, gw - 4, 3, C.lamp2);
+    rect(Em, gx + (gw >> 1) - 3, gy + 8, 6, 7, '#000');
+    rect(Em, gx + (gw >> 1) - 3, gy + 6, 1, 3, '#000');
+    rect(Em, gx + (gw >> 1) - 2, gy + 2, 4, 2, C.lamp3);
+    rect(A, gx + (gw >> 1) - 2, gy + 10, 4, 3, C.iron1);
+    // Tablette et façade à panneaux.
+    rect(A, x - 1, gy + gh, w + 2, 3, C.wood4);
+    rect(A, x - 1, gy + gh + 3, w + 2, 1, C.wood0);
+    for (let k = x + 3; k < x + w - 6; k += 10) {
+      rect(A, k, gy + gh + 7, 7, fy - gy - gh - 10, C.wood2);
+      px(A, k, gy + gh + 7, C.wood3);
+    }
+    out.lights.push({ x: gx + gw / 2, y: gy + gh / 2, r: 54, color: C.lamp1, intensity: 0.7, flicker: 0, shadows: false, halo: 0.5 });
+  },
+
+  /** Tableau des départs : lettres orangées sur fond noir, une ligne qui clignote. */
+  board(d, level, A, Em, out) {
+    const x = cellX(d), y = cellY(d);
+    const w = (d.cols ?? 6) * TILE;
+    rect(A, x - 2, y - 2, w + 4, 38, C.iron1);
+    rect(A, x, y, w, 34, C.ink);
+    rect(A, x - 2, y - 2, w + 4, 1, C.iron2);
+    const lines = ['DEPARTS', '23:59 DERNIER', '--:-- ------'];
+    lines.forEach((t, i) => {
+      Em.drawImage(textSprite(t.slice(0, Math.floor(w / 8) - 1), i === 0 ? C.lamp3 : C.lamp1, null), x + 4, y + 2 + i * 11);
+    });
+    out.lights.push({ x: x + w / 2, y: y + 17, r: 60, color: C.lamp1, intensity: 0.45, flicker: 0, shadows: false, halo: 0.3 });
+  },
+
+  /** Radiateur en fonte, sous la fenêtre. */
+  radiator(d, level, A) {
+    const x = cellX(d), y = cellY(d);
+    rect(A, x - 4, y + 4, 26, 11, C.iron2);
+    for (let k = 0; k < 6; k++) {
+      rect(A, x - 3 + k * 4, y + 3, 3, 12, C.stone3);
+      px(A, x - 3 + k * 4, y + 3, C.stone4);
+    }
+    rect(A, x - 4, y + 15, 26, 1, C.iron0);
+  },
+
+  /** Plante en pot, un peu fatiguée. */
+  plant(d, level, A) {
+    const x = cellX(d) + 8, y = cellY(d);
+    rect(A, x - 4, y + 9, 9, 7, C.brick3);
+    rect(A, x - 5, y + 9, 11, 2, C.brick4);
+    const leaves = [[-1, 8, -6, 0], [0, 8, 0, -2], [1, 8, 6, 1], [0, 8, -3, -1], [0, 8, 4, -1]];
+    for (const [ox, oy, tx, ty] of leaves) {
+      for (let i = 0; i <= 6; i++) {
+        px(A, Math.round(x + ox + (tx * i) / 6), Math.round(y + oy - i + (ty * i * i) / 36), i > 4 ? '#5d7a46' : '#3f5a34');
+      }
+    }
+  },
+
+  /** Applique murale grillagée (souterrain). */
+  walllamp(d, level, A, Em, out) {
+    const cx = cellX(d) + 8, y = cellY(d);
+    rect(A, cx - 3, y, 7, 2, C.iron1);
+    rect(A, cx - 4, y + 2, 9, 8, C.iron1);
+    rect(Em, cx - 3, y + 3, 7, 6, C.lamp2);
+    rect(Em, cx - 1, y + 4, 3, 3, C.lamp4);
+    for (let k = 0; k < 3; k++) rect(Em, cx - 3, y + 4 + k * 2, 7, 1, '#000');
+    rect(A, cx - 3, y + 10, 7, 1, C.iron0);
+    const seed = seedCounter++;
+    out.lights.push({ x: cx, y: y + 6, r: 80, color: C.lamp1, intensity: 1, flicker: seed, shadows: true, halo: 0.9 });
+    const fy = floorY(level, d.col, d.row + 1);
+    out.volumes.push({ type: 'cone', x: cx, y0: y + 9, y1: fy, w0: 8, w1: 40, color: C.lamp1, alpha: 0.12, flicker: seed, dust: 4 });
+    out.volumes.push({ type: 'reflect', x: cx, y: fy, w: 12, h: 8, color: C.lamp2, alpha: 0.3, flicker: seed });
+  },
+
+  /** Portique de signalisation : poutre en treillis au-dessus de la voie. */
+  gantry(d, level, A) {
+    const x0 = cellX(d), y = cellY(d);
+    const w = (d.cols ?? 5) * TILE;
+    rect(A, x0, y, w, 2, C.iron1);
+    rect(A, x0, y + 8, w, 2, C.iron1);
+    for (let x = x0; x < x0 + w; x += 6) {
+      for (let k = 0; k < 6; k++) px(A, x + k, y + 2 + k, C.iron1);
+    }
+    const fy = floorY(level, d.col, d.row + 1);
+    rect(A, x0 + 2, y, 2, fy - y, C.iron1);
+    rect(A, x0 + w - 4, y, 2, fy - y, C.iron1);
+    // Feux éteints du portique.
+    for (let k = 0; k < 3; k++) {
+      const lx = x0 + 18 + k * 18;
+      rect(A, lx - 3, y + 10, 7, 9, C.iron0);
+      rect(A, lx - 2, y + 11, 5, 3, '#3a1414');
+      rect(A, lx - 2, y + 15, 5, 3, '#143a22');
+    }
+  },
+
+  /**
+   * Le dernier train : voiture éclairée de l'intérieur, vitres chaudes, porte
+   * ouverte (la sortie). À peindre devant les murs (`"layer": "front"`).
+   */
+  train(d, level, A, Em, out) {
+    const x0 = cellX(d), y0 = cellY(d);
+    const w = (d.cols ?? 4) * TILE + 16, h = (d.rows ?? 10) * TILE;
+    const floor = LEVEL_Y + (d.floorRow ?? 12) * TILE;
+    const ground = LEVEL_Y + 16 * TILE;
+    // Caisse : bleu, bandeaux crème, toit arrondi plus sombre.
+    rect(A, x0 + 2, y0 + 6, w, floor - y0 - 6, '#4a64ab');
+    rect(A, x0 + 6, y0, w - 6, 3, '#2b3f78');
+    rect(A, x0 + 3, y0 + 3, w - 1, 3, '#33498a');
+    rect(A, x0 + 2, y0 + 6, 1, floor - y0 - 6, '#2b3f78');
+    rect(A, x0 + 2, y0 + 22, w, 3, C.paper3);
+    rect(A, x0 + 2, floor - 14, w, 2, C.paper3);
+    for (let k = y0 + 28; k < floor - 16; k += 6) rect(A, x0 + 2, k, 1, 3, '#33498a');
+    // Bandeau lumineux sous le toit.
+    rect(Em, x0 + 4, y0 + 8, w - 4, 1, C.lamp2);
+    // Vitres, sauf devant la porte.
+    const ex = level.exit;
+    const doorX0 = ex.x / SUB_PX - 4, doorX1 = (ex.x + ex.w) / SUB_PX + 4;
+    for (let wx = x0 + 4; wx < x0 + w - 6; wx += 17) {
+      if (wx + 13 > doorX0 && wx < doorX1) continue;
+      rect(A, wx, y0 + 30, 13, 18, C.ink);
+      rect(Em, wx, y0 + 30, 13, 18, C.lamp1);
+      rect(Em, wx + 1, y0 + 31, 11, 7, C.lamp2);
+      rect(Em, wx + 2, y0 + 42, 5, 6, '#000');
+      rect(Em, wx + 2, y0 + 40, 3, 2, '#000');
+    }
+    // Encadrement de la porte (la sortie est dessinée dedans) et marchepied.
+    const dx = doorX0 + 1, dy = ex.y / SUB_PX + LEVEL_Y - 4;
+    rect(A, dx, dy, doorX1 - doorX0 - 2, ex.h / SUB_PX + 4, C.iron2);
+    rect(A, dx + 1, dy + 1, doorX1 - doorX0 - 4, 1, C.stone3);
+    // Dessous de caisse dans l'ombre, bogies et roues posées sur les rails.
+    rect(A, x0 + 2, floor, w, ground - floor, C.iron0);
+    rect(A, x0 + 2, floor, w, 3, C.iron1);
+    rect(A, x0 + 6, floor + 10, w - 8, 2, C.iron1);
+    const wy = LEVEL_Y + 16 * TILE - 6;
+    for (const bx of [x0 + 20, x0 + w - 12]) {
+      rect(A, bx - 12, wy - 9, 24, 4, C.iron1);
+      for (let k = -1; k <= 1; k += 2) {
+        const cx = bx + k * 7;
+        for (let yy = -5; yy <= 5; yy++) {
+          for (let xx = -5; xx <= 5; xx++) if (xx * xx + yy * yy <= 25) px(A, cx + xx, wy + yy, xx * xx + yy * yy > 12 ? C.iron2 : C.iron1);
+        }
+        px(A, cx, wy, C.stone3);
+      }
+    }
+    // Numéro de voiture.
+    A.drawImage(textSprite('2', C.paper3, null), x0 + 22, y0 + 8);
+    out.lights.push({ x: x0 + w / 2, y: y0 + 40, r: 96, color: C.lamp1, intensity: 0.8, flicker: 0, shadows: false, halo: 0 });
+    out.lights.push({ x: x0 + 24, y: y0 + 10, r: 50, color: C.lamp2, intensity: 0.5, flicker: 0, shadows: false, halo: 0.3 });
+  },
 };
 
-/** Peint tous les éléments de décor d'un niveau. */
-export function paintDecor(level, A, Em, out) {
-  seedCounter = 1;
+/**
+ * Peint les éléments de décor d'un niveau. `layer` : 'back' (derrière les murs,
+ * par défaut) ou 'front' (devant, comme le train).
+ */
+export function paintDecor(level, A, Em, out, layer = 'back') {
+  if (layer === 'back') seedCounter = 1;
   for (const d of level.decor) {
+    if ((d.layer ?? 'back') !== layer) continue;
     const fn = DECOR[d.type];
     if (!fn) throw new Error(`Niveau « ${level.id} » : décor inconnu « ${d.type} ».`);
     fn(d, level, A, Em, out);

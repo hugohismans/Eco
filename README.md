@@ -17,6 +17,7 @@ Jusqu'à quatre échos coexistent. Le but : monter dans le dernier train.
 | Sauter | Espace ou ↑ | bouton « Saut », à droite |
 | Rejouer (nouvelle tentative) | R | bouton « Rejouer » |
 | Recommencer (efface les échos) | Retour arrière | bouton « Recommencer » |
+| Interagir (rester sur le quai) | Bas, S ou E | joystick vers le bas |
 
 ## Travailler en local
 
@@ -41,7 +42,8 @@ src/sim/        simulation pure (aucun accès au DOM) : testable sous Node
   level.js      lecture et validation des niveaux JSON
   physics.js    déplacement avec collisions, axe par axe
   actor.js      le personnage (joueur et échos : même code)
-  world.js      une tentative : pièce, boutons, portes, acteurs
+  world.js      une tentative : pièce, boutons, portes, faisceaux, corps
+  bodies.js     valises et plateformes mobiles
   session.js    suite des tentatives, enregistrement, échos, chrono
 src/core/       boucle à pas fixe, entrées clavier / tactile
 src/render/     mise à l'échelle entière, pixel art, éclairage, interface (lit l'état, ne l'écrit jamais)
@@ -84,6 +86,22 @@ décor (`lamp`, `pendant`, `window`, `clock`, `poster`, `bench`, `canopy`, `faca
 - Les échos heurtent le monde mais ne bloquent pas le joueur. On peut se tenir sur la
   tête d'un écho plus ancien (courte échelle).
 
+## Niveaux
+
+1. **Le quai** : marcher jusqu'à la porte du hall (tutoriel).
+2. **Le hall** : un écho reste sur le bouton pendant qu'on passe la porte.
+3. **Les guichets** : deux boutons, une porte en AND (deux échos).
+4. **La salle d'attente** : pousser la valise du porte-bagages jusqu'au bouton.
+5. **Le souterrain** : courte échelle sur un écho pour atteindre le rebord.
+6. **Le passage de la voie** : les plaques déclenchent le faisceau ; un écho
+   placé devant l'arrête pendant qu'on passe.
+7. **Le dernier train** : sans chrono. Valise dans le faisceau, échos sur les
+   boutons de la barrière et du monte-charge, puis monter dans le train… ou
+   s'asseoir sur le banc (touche Bas / S, joystick vers le bas). Deux fins.
+
+Les solutions sont jouées par un robot dans `tests/levels.test.js` (et l'on y
+vérifie aussi qu'elles ne marchent pas sans les échos).
+
 ## Format des niveaux
 
 Voir l'en-tête de `src/sim/level.js`. En bref :
@@ -97,10 +115,31 @@ Voir l'en-tête de `src/sim/level.js`. En bref :
   "duration": 10,
   "grid": ["##############", "#P..a.....1.E#", "…"],
   "doors": { "1": { "buttons": ["a"], "mode": "and" } },
+  "lasers": [{ "col": 0, "row": 15, "buttons": ["c"], "mode": "or", "invert": true }],
+  "platforms": [{ "col": 10, "row": 16, "to": { "col": 10, "row": 12 },
+                  "buttons": ["b"], "behavior": "loop" }],
+  "stay": { "col": 6, "row": 15, "cols": 2 },
+  "endings": { "exit": "…", "stay": "…" },
   "decor": [{ "type": "lamp", "col": 3, "row": 9 }]
 }
 ```
 
-La grille fait 14 colonnes sur 18 lignes. `#` mur, `=` plateforme fine, `P` départ,
-`E` sortie, `a`…`i` boutons, `1`…`9` portes. `duration` en secondes, `null` pour un
-niveau sans chrono.
+La grille fait 14 colonnes sur 18 lignes :
+
+| Caractère | Élément |
+|---|---|
+| `#` | mur / sol |
+| `=` | plateforme fine (traversable par-dessous) |
+| `P` | départ |
+| `E` | sortie |
+| `a`…`i` | bouton pressoir (actif tant qu'un corps est dessus) |
+| `1`…`9` | porte reliée à des boutons (`and` / `or`, `invert`) |
+| `B`, `K` | valise, caisse (blocs poussables) |
+| `>` `<` `v` `^` | émetteur de faisceau mortel, tirant dans ce sens |
+
+- `duration` en secondes, `null` pour un niveau sans chrono.
+- Un faisceau s'arrête sur le premier mur, porte, plateforme, valise ou écho ; s'il
+  touche le joueur, la tentative reprend (elle ne devient pas un écho).
+- Une plateforme `hold` va vers `to` tant que ses boutons sont actifs et revient
+  sinon ; une plateforme `loop` fait l'aller-retour tant qu'ils sont actifs.
+- `stay` : zone où l'on peut choisir de rester (fin `stay`) ; la sortie donne la fin `exit`.

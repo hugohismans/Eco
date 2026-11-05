@@ -16,7 +16,7 @@
 
 import { TILE, SUB, DOOR_TICKS } from '../sim/constants.js';
 import { C, ECHO_TINTS } from './palette.js';
-import { makeCanvas, rect, px } from './pixel.js';
+import { makeCanvas, rect, px, textSprite } from './pixel.js';
 import { VIEW_W, VIEW_H, LEVEL_Y } from './screen.js';
 import { themeOf, paintTiles, floorRowBelow } from './themes.js';
 import { paintDecor } from './decor.js';
@@ -93,9 +93,13 @@ export class Renderer {
     this.drawExit(P, E, scene, world, t, lights);
     for (const b of world.buttons) this.drawButton(P, E, b, lights);
     for (const d of world.doors) this.drawDoor(P, E, d, lights);
+    for (const pf of world.platforms) this.drawPlatform(P, E, pf, alpha, lights, t);
 
     const occluders = [];
+    for (const b of world.blocks) this.drawBlock(P, b, alpha, occluders);
+    this.drawLasers(P, E, world, lights, volumes, t);
     this.drawActors(P, E, world, alpha, lights, occluders, t);
+    this.drawStayHint(E, world, t);
     this.drawDust(E, volumes, t);
     this.drawReplayRipple(E, session, world);
 
@@ -129,6 +133,13 @@ export class Renderer {
     D.globalAlpha = 1;
     D.globalCompositeOperation = 'source-over';
     D.drawImage(this.vignette, 0, 0);
+
+    // Le joueur vient de toucher un faisceau : bref voile rouge.
+    const death = this.deathProgress(world);
+    if (death > 0 && death < 1) {
+      D.fillStyle = `rgba(255,70,60,${0.22 * (1 - death) ** 2})`;
+      D.fillRect(0, 0, W, H);
+    }
 
     // Fondus d'entrée de niveau et de sortie.
     const fadeIn = Math.max(0, 1 - session.levelTick / 40);
@@ -205,6 +216,10 @@ export class Renderer {
     const { x, y } = lerpPos(p, alpha);
     const sx = x + SPRITE_DX, sy = y + LEVEL_Y;
     const frame = this.frameOf(p, world.tick);
+    if (p.dead) {
+      this.drawDissolve(P, E, p, frame, sx, sy, lights);
+      return;
+    }
     // Ombre de contact au sol.
     if (p.onGround) {
       rect(P, x - 1, sy + 21, 12, 1, 'rgba(5,6,15,0.55)');
@@ -255,6 +270,161 @@ export class Renderer {
   }
 
   // --- Mécanismes -------------------------------------------------------------
+
+  /** 0 → 1 pendant la disparition du joueur ; 0 s'il est en vie. */
+  deathProgress(world) {
+    const p = world.player;
+    const s = this.anim.get(p);
+    if (!p.dead || !s) return 0;
+    if (s.deadAt === undefined) s.deadAt = world.tick;
+    return Math.min(1, (world.tick - s.deadAt) / 45);
+  }
+
+  /** Le joueur touché par un faisceau se défait en braises qui montent. */
+  drawDissolve(P, E, p, frame, sx, sy, lights) {
+    const k = this.deathProgress(this.trailWorld);
+    P.globalAlpha = Math.max(0, 1 - k * 1.6);
+    P.drawImage(sprite(frame, p.facing, C.silhouette), sx, sy);
+    P.globalAlpha = 1;
+    E.globalAlpha = Math.max(0, 0.9 - k);
+    E.drawImage(rimSprite(frame, p.facing, 1, C.signalRed), sx, sy);
+    for (let i = 0; i < 26; i++) {
+      const seed = (i * 73) % 97 / 97;
+      const px0 = sx + 1 + ((i * 7) % 10);
+      const py0 = sy + 2 + ((i * 13) % 19);
+      const rise = k * (14 + seed * 26);
+      const drift = Math.sin(seed * 20 + k * 6) * 3 * k;
+      const a = (1 - k) * (0.5 + 0.5 * seed);
+      if (a <= 0.02) continue;
+      E.globalAlpha = a;
+      px(E, Math.round(px0 + drift), Math.round(py0 - rise), i % 3 ? C.lamp2 : C.signalRed);
+    }
+    E.globalAlpha = 1;
+    if (k < 1) lights.push({ x: sx + 6, y: sy + 11, r: 40, color: C.signalRed, intensity: 0.7 * (1 - k), flicker: 0, shadows: false, halo: 0.6 });
+  }
+
+  /** Valise de cuir (sangles, coins de laiton) ou caisse de bois. */
+  drawBlock(P, b, alpha, occluders) {
+    const x = Math.round((b.prevX + (b.x - b.prevX) * alpha) / SUB);
+    const y = Math.round((b.prevY + (b.y - b.prevY) * alpha) / SUB) + LEVEL_Y;
+    const w = b.w / SUB, h = b.h / SUB;
+    if (b.onGround) rect(P, x - 1, y + h, w + 2, 1, 'rgba(5,6,15,0.5)');
+    if (b.type === 'caisse') {
+      rect(P, x, y, w, h, C.wood2);
+      rect(P, x, y, w, 2, C.wood3);
+      rect(P, x, y + h - 2, w, 2, C.wood1);
+      for (let k = 1; k < h - 2; k++) {
+        px(P, x + Math.round((k * (w - 1)) / (h - 1)), y + k, C.wood1);
+        px(P, x + w - 1 - Math.round((k * (w - 1)) / (h - 1)), y + k, C.wood1);
+      }
+      rect(P, x, y, 1, h, C.wood0);
+      rect(P, x + w - 1, y, 1, h, C.wood0);
+    } else {
+      // Poignée.
+      rect(P, x + 4, y - 2, 6, 1, C.wood0);
+      px(P, x + 4, y - 1, C.wood0);
+      px(P, x + 9, y - 1, C.wood0);
+      rect(P, x, y, w, h, '#7a4529');
+      rect(P, x, y, w, 1, '#9a5d38');
+      rect(P, x, y + h - 1, w, 1, '#4e2a17');
+      // Sangles et coins.
+      rect(P, x + 3, y, 2, h, '#4e2a17');
+      rect(P, x + w - 5, y, 2, h, '#4e2a17');
+      px(P, x + 3, y + 5, C.brass);
+      px(P, x + w - 5, y + 5, C.brass);
+      for (const [cx, cy] of [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]]) px(P, x + cx, y + cy, C.brass);
+      // Étiquette de voyage, jaunie.
+      rect(P, x + 7, y + 3, 3, 4, C.paper2);
+      px(P, x + 8, y + 4, C.brick3);
+    }
+    occluders.push({ x, y, w, h });
+  }
+
+  /** Monte-charge : plancher strié, glissières, câble, voyant qui clignote. */
+  drawPlatform(P, E, pf, alpha, lights, t) {
+    const x = Math.round((pf.prevX + (pf.x - pf.prevX) * alpha) / SUB);
+    const y = Math.round((pf.prevY + (pf.y - pf.prevY) * alpha) / SUB) + LEVEL_Y;
+    const w = pf.w / SUB, h = pf.h / SUB;
+    const top = Math.min(pf.y0, pf.y1) / SUB + LEVEL_Y - 18;
+    // Glissières sur toute la course, poulie en haut, câble jusqu'au plancher.
+    if (pf.x0 === pf.x1) {
+      rect(P, x - 1, top, 1, Math.max(pf.y0, pf.y1) / SUB + LEVEL_Y - top + h, C.iron1);
+      rect(P, x + w, top, 1, Math.max(pf.y0, pf.y1) / SUB + LEVEL_Y - top + h, C.iron1);
+      rect(P, x - 2, top - 2, w + 4, 2, C.iron2);
+      rect(P, x + (w >> 1) - 2, top, 4, 4, C.iron2);
+      rect(P, x + (w >> 1), top + 4, 1, y - top - 4, C.iron0);
+    }
+    rect(P, x, y, w, h, C.iron2);
+    for (let k = 0; k < w; k += 4) {
+      rect(P, x + k, y, 2, 2, C.lamp1);
+      rect(P, x + k + 2, y, 2, 2, C.ink);
+    }
+    rect(P, x, y + h - 1, w, 1, C.iron0);
+    const blink = pf.moving && ((t * 3) | 0) % 2 === 0;
+    const col = pf.active ? (blink ? C.lamp3 : C.lamp1) : C.lamp0;
+    rect(E, x + (w >> 1) - 1, y + 3, 2, 1, col);
+    if (pf.active) lights.push({ x: x + w / 2, y: y + 4, r: 26, color: C.lamp1, intensity: blink ? 0.55 : 0.3, flicker: 0, shadows: false, halo: 0.5 });
+  }
+
+  /** Faisceaux de signal : émetteur, rayon net, lueur, étincelles au contact. */
+  drawLasers(P, E, world, lights, volumes, t) {
+    for (const l of world.lasers) {
+      const cx = l.col * TILE + 8, cy = l.row * TILE + 8 + LEVEL_Y;
+      // Boîtier sur la case émettrice, lentille tournée vers le tir.
+      rect(P, cx - 6, cy - 6, 12, 12, C.iron1);
+      rect(P, cx - 6, cy - 6, 12, 1, C.iron2);
+      rect(P, cx - 5, cy + 5, 10, 1, C.iron0);
+      const lx = cx + l.dx * 5, ly = cy + l.dy * 5;
+      rect(P, lx - 2, ly - 2, 4, 4, C.iron0);
+      rect(E, lx - 1, ly - 1, 2, 2, l.on ? C.signalRed : '#401010');
+      if (!l.on) continue;
+      const ox = l.ox / SUB, oy = l.oy / SUB + LEVEL_Y;
+      const ex = l.ex / SUB, ey = l.ey / SUB + LEVEL_Y;
+      const shimmer = 0.75 + 0.25 * Math.sin(t * 40);
+      if (l.dx !== 0) {
+        const x0 = Math.min(ox, ex), len = Math.abs(ex - ox);
+        E.globalAlpha = shimmer;
+        rect(E, x0, oy - 1, len, 2, C.signalRed);
+        rect(E, x0, oy, len, 1, '#ffd0c8');
+      } else {
+        const y0 = Math.min(oy, ey), len = Math.abs(ey - oy);
+        E.globalAlpha = shimmer;
+        rect(E, ox - 1, y0, 2, len, C.signalRed);
+        rect(E, ox, y0, 1, len, '#ffd0c8');
+      }
+      E.globalAlpha = 1;
+      // Étincelles au point d'impact.
+      for (let i = 0; i < 5; i++) {
+        const a = t * 9 + i * 1.7;
+        const r = (Math.sin(a * 1.3) + 1) * 2;
+        px(E, Math.round(ex - l.dx * 1 + Math.cos(a) * r * (l.dx ? 0.5 : 1)), Math.round(ey - l.dy + Math.sin(a) * r), i % 2 ? C.lamp4 : C.signalRed);
+      }
+      volumes.push({ type: 'beam', x0: ox, y0: oy, x1: ex, y1: ey, color: C.signalRed, alpha: 0.35 });
+      const len = Math.hypot(ex - ox, ey - oy);
+      for (let d = 12; d < len; d += 28) {
+        lights.push({ x: ox + (l.dx * d), y: oy + (l.dy * d), r: 24, color: C.signalRed, intensity: 0.35, flicker: 0, shadows: false, halo: 0 });
+      }
+      lights.push({ x: ex, y: ey, r: 30, color: C.signalRed, intensity: 0.7, flicker: 0, shadows: false, halo: 0.6 });
+    }
+  }
+
+  /** Dernier niveau : devant le banc, une invite discrète à rester. */
+  drawStayHint(E, world, t) {
+    const z = world.level.stay;
+    const p = world.player;
+    if (!z || p.dead || !p.onGround) return;
+    const cx = p.x + (p.w >> 1), feet = p.y + p.h;
+    if (cx < z.x || cx >= z.x + z.w || feet <= z.y || feet > z.y + z.h) return;
+    const s = textSprite('RESTER ?', C.paper3, null);
+    const x = Math.round((z.x + z.w / 2) / SUB - s.width / 2);
+    const y = Math.round(z.y / SUB) + LEVEL_Y - 22;
+    E.globalAlpha = 0.55 + 0.35 * Math.sin(t * 2.5);
+    E.drawImage(s, x, y);
+    // Petite flèche vers le bas.
+    const ax = Math.round((z.x + z.w / 2) / SUB);
+    for (let k = 0; k < 3; k++) rect(E, ax - 2 + k, y + 11 + k, 5 - k * 2, 1, C.paper3);
+    E.globalAlpha = 1;
+  }
 
   drawExit(P, E, scene, world, t, lights) {
     const ex = world.level.exit;
@@ -402,10 +572,11 @@ function buildScene(level) {
   // on n'en garde que ce qui reste visible une fois le décor et les murs posés.
   const far = makeCanvas(VIEW_W, VIEW_H);
   const farCtx = far.getContext('2d');
-  theme.backdrop(level, A, farCtx, out.lights);
+  theme.backdrop(level, A, farCtx, out.lights, theme);
   const before = A.getImageData(0, 0, VIEW_W, VIEW_H).data;
   paintDecor(level, A, Em, out);
   paintTiles(level, theme, A);
+  paintDecor(level, A, Em, out, 'front');
   const after = A.getImageData(0, 0, VIEW_W, VIEW_H).data;
   const visible = new Uint8Array(VIEW_W * VIEW_H);
   const farImg = farCtx.getImageData(0, 0, VIEW_W, VIEW_H);
@@ -422,9 +593,11 @@ function buildScene(level) {
   // Encadrement de la sortie (bois) et rayons qui s'en échappent.
   const ex = level.exit;
   const x = ex.x / SUB, y = ex.y / SUB + LEVEL_Y, w = ex.w / SUB, h = ex.h / SUB;
-  rect(A, x - 2, y - 3, w + 4, h + 3, C.wood1);
-  rect(A, x - 1, y - 2, w + 2, h + 2, C.wood3);
-  rect(A, x - 2, y - 3, w + 4, 1, C.wood4);
+  if (level.exitStyle !== 'train') {
+    rect(A, x - 2, y - 3, w + 4, h + 3, C.wood1);
+    rect(A, x - 1, y - 2, w + 2, h + 2, C.wood3);
+    rect(A, x - 2, y - 3, w + 4, 1, C.wood4);
+  }
   rect(A, x, y, w, h, C.ink);
   out.volumes.push({ type: 'rays', x: x + w / 2, y: y + h - 2, len: 46, color: C.lamp3, alpha: 0.12, pulse: true });
   out.volumes.push({ type: 'reflect', x: x + w / 2, y: y + h, w: w + 6, h: 10, color: C.lamp3, alpha: 0.35 });

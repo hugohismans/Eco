@@ -71,3 +71,25 @@ export const JUMP_BUFFER_TICKS = 6;
 // --- Éléments ---------------------------------------------------------------
 /** Durée d'ouverture / de fermeture d'une porte (ticks). */
 export const DOOR_TICKS = 12;
+
+/** Vitesse d'une valise poussée (sous-pixels par tick) : 0,625 px/tick. */
+export const PUSH_SPEED = 10;
+
+/** Valises et caisses (sous-pixels). */
+export const BLOCK_TYPES = {
+  B: { type: 'valise', w: 14 * SUB, h: 12 * SUB },
+  K: { type: 'caisse', w: 14 * SUB, h: 14 * SUB },
+};
+
+/** Épaisseur d'une plateforme mobile (monte-charge), en sous-pixels. */
+export const PLATFORM_H = 6 * SUB;
+/** Vitesse par défaut d'une plateforme mobile (sous-pixels par tick) : 0,75 px/tick. */
+export const PLATFORM_SPEED = 12;
+/** Pause d'une plateforme « en boucle » à chaque extrémité (ticks). */
+export const PLATFORM_WAIT = 40;
+
+/** Demi-épaisseur d'un faisceau (sous-pixels). */
+export const BEAM_HALF = 1 * SUB;
+
+/** Délai entre la chute du joueur dans un faisceau et la reprise (ticks). */
+export const DEATH_TICKS = 50;

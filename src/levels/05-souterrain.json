@@ -1,0 +1,34 @@
+{
+  "id": "souterrain",
+  "name": "Le souterrain",
+  "theme": "souterrain",
+  "narration": "Sous la voie, on entend encore les pas. (provisoire)",
+  "duration": 10,
+  "grid": [
+    "##############",
+    "##############",
+    "##############",
+    "##############",
+    "##############",
+    "##############",
+    "##############",
+    "#............#",
+    "#............#",
+    "#............#",
+    "#............#",
+    "#..........E.#",
+    "#..........E.#",
+    "#.........####",
+    "#.........####",
+    "#P........####",
+    "##############",
+    "##############"
+  ],
+  "decor": [
+    {"type": "walllamp", "col": 2, "row": 9},
+    {"type": "walllamp", "col": 7, "row": 9},
+    {"type": "walllamp", "col": 11, "row": 8},
+    {"type": "sign", "col": 9, "row": 8, "dy": 2, "text": "SORTIE"},
+    {"type": "poster", "col": 4, "row": 11, "cols": 2, "rows": 2, "variant": "mer"}
+  ]
+}
