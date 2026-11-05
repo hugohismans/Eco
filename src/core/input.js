@@ -22,6 +22,8 @@ const KEY_COMMANDS = {
   Delete: 'restart',
   Enter: 'confirm',
   NumpadEnter: 'confirm',
+  Escape: 'menu',
+  KeyP: 'menu',
 };
 
 /** Distance (px CSS) au-delà de laquelle le joystick donne une direction. */
@@ -37,6 +39,17 @@ export class Input {
     this.commands = [];
     /** Vrai dès qu'un doigt a touché l'écran. */
     this.usedTouch = false;
+    /** Quand un menu est ouvert, le clavier sert au menu, pas au jeu. */
+    this.menuOpen = false;
+  }
+
+  /** Ouvre ou ferme la parenthèse « menu » : on relâche tout. */
+  setMenuOpen(open) {
+    this.menuOpen = open;
+    this.keys.clear();
+    this.latched = 0;
+    this.touchBits = 0;
+    this.commands = [];
   }
 
   /** Octet d'entrée du tick courant. */
@@ -62,6 +75,7 @@ export class Input {
   attachKeyboard(target = window) {
     target.addEventListener('keydown', (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (this.menuOpen) return;
       const bit = KEY_BITS[e.code];
       const cmd = KEY_COMMANDS[e.code];
       if (bit !== undefined) {

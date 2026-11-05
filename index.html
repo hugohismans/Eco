@@ -11,12 +11,16 @@
   <body>
     <main id="app">
       <div id="stage">
-        <canvas id="screen" aria-label="Écho, écran de jeu"></canvas>
+        <div id="frame">
+          <canvas id="screen" aria-label="Écho, écran de jeu"></canvas>
+          <div id="overlay" hidden></div>
+        </div>
       </div>
 
       <div id="bar">
         <button id="btn-replay" type="button" tabindex="-1">Rejouer <kbd>R</kbd></button>
         <button id="btn-restart" type="button" tabindex="-1">Recommencer <kbd>⌫</kbd></button>
+        <button id="btn-menu" type="button" tabindex="-1" aria-label="Menu">Menu <kbd>Échap</kbd></button>
       </div>
 
       <div id="pad" aria-hidden="true">

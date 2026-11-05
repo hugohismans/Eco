@@ -7,6 +7,9 @@ import { Renderer } from './render/renderer.js';
 import { fitCanvas } from './render/screen.js';
 import { Game } from './game.js';
 import { LEVELS } from './levels/index.js';
+import { Sound } from './audio/sound.js';
+import { Save } from './core/save.js';
+import { Menus } from './ui/menus.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('screen');
@@ -26,7 +29,25 @@ const bindCommand = (el, name) => {
 };
 bindCommand($('btn-replay'), 'replay');
 bindCommand($('btn-restart'), 'restart');
-canvas.addEventListener('pointerdown', () => input.command('confirm'));
+bindCommand($('btn-menu'), 'menu');
+
+// --- Son et sauvegarde ------------------------------------------------------
+const save = new Save();
+const sound = new Sound();
+sound.setMuted(save.muted);
+// Le navigateur n'autorise le son qu'après un geste.
+const unlock = () => sound.unlock();
+window.addEventListener('pointerdown', unlock);
+window.addEventListener('keydown', unlock);
+
+// --- Menus -----------------------------------------------------------------------
+const menus = new Menus($('overlay'), {
+  sound,
+  onOpen: (open) => {
+    input.setMenuOpen(open);
+    document.body.classList.toggle('menu', open);
+  },
+});
 
 // --- Mise en page --------------------------------------------------------
 const coarse = window.matchMedia('(pointer: coarse)');
@@ -42,6 +63,8 @@ function layout() {
   const w = window.innerWidth;
   const h = window.innerHeight - bar - below - 8;
   const scale = fitCanvas(canvas, w, h);
+  // Les écrans d'interface sont dessinés en « pixels du jeu ».
+  $('frame').style.setProperty('--px', `${scale / (window.devicePixelRatio || 1)}px`);
   if (renderer && renderer.scale !== scale) renderer.resize(scale);
 }
 
@@ -80,11 +103,16 @@ await document.fonts.load('8px "Press Start 2P"', 'ÉCHO éà').catch(() => {});
 renderer = new Renderer(canvas);
 renderer.resize(1, quality);
 layout();
-const game = new Game({ levels: LEVELS, input, renderer });
+const game = new Game({ levels: LEVELS, input, renderer, sound, save, menus });
 
-// Accès direct à un niveau pour tester : …/Eco/#niveau=2
+// Accès direct à un niveau (tests) : …/Eco/#niveau=2 ; sinon, l'écran titre.
 const m = location.hash.match(/niveau=(\d+)/);
-if (m) game.load(Number(m[1]) - 1);
+if (m) game.play(Number(m[1]) - 1);
+else game.showTitle();
+
+// On quitte l'onglet en pleine partie : pause.
+document.addEventListener('visibilitychange', () => { if (document.hidden) game.pause(); });
+window.addEventListener('blur', () => game.pause());
 
 startLoop({
   tick: () => game.tick(),

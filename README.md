@@ -7,7 +7,21 @@ qui rejoue exactement ce qu'on a fait, pendant qu'on recommence à côté de lui
 Jusqu'à quatre échos coexistent. Le but : monter dans le dernier train.
 
 - Jouer : <https://hugohismans.github.io/Eco/>
-- Accès direct à un niveau (test) : `…/Eco/#niveau=2`
+- Accès direct à un niveau (test, sans verrou) : `…/Eco/#niveau=2`
+
+## Interface, sauvegarde, son
+
+- Écran titre (Commencer / Continuer), sélecteur de niveaux avec vignettes, pause
+  (Échap, P ou bouton « Menu »), écran de réussite (essais, échos, temps, records),
+  écran de fin avec les fins découvertes.
+- Un niveau s'ouvre quand le précédent est réussi. La progression, les records,
+  les fins vues et le réglage du son sont gardés dans le navigateur (`localStorage`,
+  clé `echo.save`) ; sans stockage disponible, le jeu marche, il oublie seulement.
+- Sons synthétisés (Web Audio, aucun fichier) : saut, réception, bouton, porte,
+  valise qui frotte, monte-charge, faisceau qui grésille, chute, écho qui repart,
+  tic du chrono dans les 3 dernières secondes, réussite, fins. Ambiance de gare
+  (bourdonnement, vent, carillon lointain, réverbération) dosée selon la pièce.
+  Les sons des échos sont plus faibles et plus sourds. Bouton pour couper le son.
 
 ## Commandes
 
@@ -18,6 +32,8 @@ Jusqu'à quatre échos coexistent. Le but : monter dans le dernier train.
 | Rejouer (nouvelle tentative) | R | bouton « Rejouer » |
 | Recommencer (efface les échos) | Retour arrière | bouton « Recommencer » |
 | Interagir (rester sur le quai) | Bas, S ou E | joystick vers le bas |
+| Pause / menu | Échap ou P | bouton « Menu » |
+| Dans les menus | flèches, Entrée, Échap | toucher |
 
 ## Travailler en local
 
@@ -45,7 +61,9 @@ src/sim/        simulation pure (aucun accès au DOM) : testable sous Node
   world.js      une tentative : pièce, boutons, portes, faisceaux, corps
   bodies.js     valises et plateformes mobiles
   session.js    suite des tentatives, enregistrement, échos, chrono
-src/core/       boucle à pas fixe, entrées clavier / tactile
+src/core/       boucle à pas fixe, entrées clavier / tactile, sauvegarde
+src/audio/      sons et ambiance synthétisés
+src/ui/         écrans d'interface (titre, niveaux, pause, réussite, fin), vignettes
 src/render/     mise à l'échelle entière, pixel art, éclairage, interface (lit l'état, ne l'écrit jamais)
 src/levels/     un fichier JSON par pièce, et index.js pour l'ordre
 src/game.js     relie entrées, session et rendu

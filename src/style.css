@@ -167,3 +167,190 @@ body.touch #pad {
   box-shadow: 0 0 24px rgba(255, 179, 92, 0.25), inset 0 0 18px rgba(255, 179, 92, 0.15);
 }
 #btn-jump.pressed { background: rgba(255, 179, 92, 0.4); }
+
+/* --- Écrans d'interface (titre, niveaux, pause, réussite, fin) -----------
+   Tout est mesuré en « pixels du jeu » : --px vaut la taille d'un pixel du
+   jeu à l'écran. La police pixel tombe ainsi pile sur la grille de l'image. */
+
+#frame {
+  --px: 2px;
+  position: relative;
+  line-height: 0;
+}
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  line-height: 1.5;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  font-size: calc(8 * var(--px));
+  color: var(--text);
+  overflow: hidden;
+}
+#overlay[hidden] { display: none; }
+
+body.menu #bar,
+body.menu #pad,
+body.menu #keys-hint { visibility: hidden; }
+
+.ui-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(8 * var(--px));
+  width: 100%;
+  padding: calc(16 * var(--px)) calc(12 * var(--px));
+  text-align: center;
+  animation: ui-in 0.4s ease-out;
+}
+@keyframes ui-in { from { opacity: 0; } to { opacity: 1; } }
+
+.ui-screen h2 {
+  margin: 0;
+  font-size: calc(8 * var(--px));
+  font-weight: normal;
+  color: var(--lamp-soft);
+  text-shadow: var(--px) var(--px) 0 #05060f, 0 0 calc(8 * var(--px)) rgba(255, 179, 92, 0.45);
+}
+
+.ui-logo {
+  margin: 0;
+  font-size: calc(32 * var(--px));
+  font-weight: normal;
+  line-height: 1;
+  color: #fff0c8;
+  letter-spacing: calc(2 * var(--px));
+  text-shadow:
+    calc(2 * var(--px)) calc(2 * var(--px)) 0 #05060f,
+    0 0 calc(12 * var(--px)) rgba(255, 179, 92, 0.8),
+    0 0 calc(32 * var(--px)) rgba(255, 154, 60, 0.5);
+}
+.ui-title { justify-content: flex-start; padding-top: calc(64 * var(--px)); }
+.ui-title .ui-actions { margin-top: auto; margin-bottom: calc(24 * var(--px)); }
+.ui-sub {
+  margin: 0;
+  color: var(--text-dim);
+  text-shadow: var(--px) var(--px) 0 #05060f;
+}
+
+.ui-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: calc(6 * var(--px));
+  min-width: calc(128 * var(--px));
+}
+.ui-actions.row { flex-direction: row; justify-content: center; min-width: 0; }
+
+/* Bouton pixel : bord en escalier, ombre nette, sans arrondi. */
+.ui-btn {
+  font: inherit;
+  font-size: calc(8 * var(--px));
+  line-height: 1;
+  color: var(--text);
+  background: rgba(20, 29, 63, 0.92);
+  border: none;
+  padding: calc(5 * var(--px)) calc(8 * var(--px));
+  cursor: pointer;
+  box-shadow:
+    0 calc(-1 * var(--px)) 0 0 #2b3768, 0 var(--px) 0 0 #2b3768,
+    calc(-1 * var(--px)) 0 0 0 #2b3768, var(--px) 0 0 0 #2b3768,
+    0 calc(3 * var(--px)) 0 0 rgba(5, 6, 15, 0.8);
+  outline: none;
+}
+.ui-btn.primary { color: #fff0c8; background: rgba(120, 62, 28, 0.92); }
+.ui-btn.primary { box-shadow:
+    0 calc(-1 * var(--px)) 0 0 #ff9a3c, 0 var(--px) 0 0 #ff9a3c,
+    calc(-1 * var(--px)) 0 0 0 #ff9a3c, var(--px) 0 0 0 #ff9a3c,
+    0 calc(3 * var(--px)) 0 0 rgba(5, 6, 15, 0.8); }
+.ui-btn:hover, .ui-btn:focus-visible, .ui-btn:focus {
+  color: #fff0c8;
+  box-shadow:
+    0 calc(-1 * var(--px)) 0 0 #ffd089, 0 var(--px) 0 0 #ffd089,
+    calc(-1 * var(--px)) 0 0 0 #ffd089, var(--px) 0 0 0 #ffd089,
+    0 0 calc(10 * var(--px)) rgba(255, 179, 92, 0.5);
+}
+.ui-btn:active { transform: translateY(var(--px)); }
+
+.ui-note { margin: 0; color: var(--lamp-soft); text-shadow: var(--px) var(--px) 0 #05060f; }
+.ui-note.dim { color: var(--text-dim); }
+.ui-kicker { margin: 0; color: var(--text-dim); }
+
+/* Sélecteur de niveaux : liste qui défile. */
+.ui-select { justify-content: flex-start; background: rgba(5, 6, 15, 0.55); }
+.ui-levels {
+  list-style: none;
+  margin: 0;
+  padding: var(--px) calc(4 * var(--px)) calc(4 * var(--px));
+  width: 100%;
+  flex: 1;
+  overflow-y: auto;
+  touch-action: pan-y;
+  display: flex;
+  flex-direction: column;
+  gap: calc(6 * var(--px));
+  scrollbar-width: none;
+}
+.ui-levels::-webkit-scrollbar { display: none; }
+.ui-level {
+  font: inherit;
+  font-size: calc(8 * var(--px));
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--px));
+  width: 100%;
+  padding: calc(3 * var(--px));
+  border: none;
+  color: var(--text);
+  background: rgba(20, 29, 63, 0.9);
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 0 0 var(--px) #2b3768, 0 calc(3 * var(--px)) 0 0 rgba(5, 6, 15, 0.8);
+  outline: none;
+}
+.ui-level:hover, .ui-level:focus { box-shadow: 0 0 0 var(--px) #ffd089, 0 0 calc(10 * var(--px)) rgba(255, 179, 92, 0.45); }
+.ui-level.locked { opacity: 0.45; cursor: default; }
+.ui-thumb {
+  flex: none;
+  width: calc(42 * var(--px));
+  height: calc(42 * var(--px));
+  overflow: hidden;
+  background: #05060f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ui-thumb canvas {
+  /* La pièce entière, réduite : on garde le bas (là où l'on joue). */
+  width: calc(42 * var(--px));
+  height: calc(63 * var(--px));
+  transform: translateY(calc(-14 * var(--px)));
+  image-rendering: auto;
+}
+.ui-lock { color: var(--text-dim); font-size: calc(16 * var(--px)); line-height: 1; }
+.ui-level-text { display: flex; flex-direction: column; gap: calc(3 * var(--px)); min-width: 0; }
+.ui-level-num { color: var(--lamp); }
+.ui-level-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-level-status { color: var(--text-dim); }
+.ui-level.done .ui-level-status { color: #a6f0b6; }
+
+/* Réussite et fin. */
+.ui-won, .ui-end { background: rgba(5, 6, 15, 0.35); }
+.ui-stats { display: flex; flex-direction: column; gap: calc(4 * var(--px)); min-width: calc(128 * var(--px)); }
+.ui-stat { display: flex; justify-content: space-between; gap: calc(12 * var(--px)); text-shadow: var(--px) var(--px) 0 #05060f; }
+.ui-stat .best { color: #a6f0b6; }
+.ui-ending {
+  margin: 0 0 calc(16 * var(--px));
+  font-size: calc(8 * var(--px));
+  line-height: 2;
+  color: #fff0c8;
+  text-shadow: var(--px) var(--px) 0 #05060f, 0 0 calc(10 * var(--px)) rgba(255, 179, 92, 0.6);
+}
+.ui-pause { background: rgba(5, 6, 15, 0.3); }
+.ui-title {
+  background: linear-gradient(to bottom, rgba(5, 6, 15, 0.55), rgba(5, 6, 15, 0) 45%, rgba(5, 6, 15, 0) 60%, rgba(5, 6, 15, 0.6));
+}
+.ui-title .ui-sub { margin-top: calc(4 * var(--px)); }

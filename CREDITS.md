@@ -15,6 +15,11 @@ les packs libres (Kenney, OpenGameArt, itch.io) : aucun ne collait à la fois à
 palette nocturne, au format portrait et à la grille de 16 px de la gare ; dessiner
 en code garde une image cohérente d'une pièce à l'autre.
 
+## Sons
+
+Tous les sons et l'ambiance sont synthétisés en direct par le jeu (Web Audio API,
+`src/audio/sound.js`) : aucun fichier audio externe.
+
 ## Outils
 
 - [Vite](https://vite.dev/) (licence MIT) : build du site.

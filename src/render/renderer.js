@@ -142,7 +142,7 @@ export class Renderer {
     }
 
     // Fondus d'entrée de niveau et de sortie.
-    const fadeIn = Math.max(0, 1 - session.levelTick / 40);
+    const fadeIn = ui.hideHud ? 0 : Math.max(0, 1 - session.levelTick / 40);
     const fade = Math.max(fadeIn, ui.fade ?? 0);
     if (fade > 0) {
       D.fillStyle = `rgba(5,6,15,${fade})`;
@@ -150,9 +150,11 @@ export class Renderer {
     }
 
     // Interface, nette, par-dessus tout.
-    drawHud(this.hud.getContext('2d'), session, ui);
-    D.imageSmoothingEnabled = false;
-    D.drawImage(this.hud, 0, 0, W, H);
+    if (!ui.hideHud) {
+      drawHud(this.hud.getContext('2d'), session, ui);
+      D.imageSmoothingEnabled = false;
+      D.drawImage(this.hud, 0, 0, W, H);
+    }
   }
 
   // --- Animation (échantillonnée une fois par tick) -------------------------
@@ -560,7 +562,7 @@ function lerpPos(a, alpha) {
 }
 
 /** Tout ce qui ne bouge pas dans une pièce, peint une seule fois. */
-function buildScene(level) {
+export function buildScene(level) {
   const theme = themeOf(level);
   const albedo = makeCanvas(VIEW_W, VIEW_H);
   const emissive = makeCanvas(VIEW_W, VIEW_H);
