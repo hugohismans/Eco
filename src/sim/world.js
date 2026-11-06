@@ -16,13 +16,21 @@
 
 import {
   GRID_W, GRID_H, TILE_SUB, DOOR_TICKS, T_SOLID, T_ONEWAY, BEAM_HALF,
+  T_ICE, T_CONV_L, T_CONV_R, T_GHOST, T_GLASS, CONVEYOR_SPEED, CRUMBLE_TICKS, SPRING_VEL,
 } from './constants.js';
-import { createActor, stepActor, actorInput } from './actor.js';
+import { createActor, stepActor, actorInput, bounce } from './actor.js';
 import { createBlock, stepBlock, createPlatform, stepPlatform } from './bodies.js';
 import { overlaps, moveAxis } from './physics.js';
 
-/** Obstacle renvoyé pour une case de la grille. */
+/** Obstacles renvoyés pour une case de la grille. */
 const TILE_HIT = Object.freeze({ kind: 'tile' });
+const ICE_HIT = Object.freeze({ kind: 'tile', ice: true });
+/** Un tapis roulant emporte ce qui est posé dessus : il expose son dx. */
+const CONV_L_HIT = Object.freeze({ kind: 'tile', dx: -CONVEYOR_SPEED, dy: 0, conveyor: -1 });
+const CONV_R_HIT = Object.freeze({ kind: 'tile', dx: CONVEYOR_SPEED, dy: 0, conveyor: 1 });
+
+/** Cases qui arrêtent les faisceaux (les tableaux et vitrines les laissent passer). */
+const OPAQUE = new Set([T_SOLID, T_ICE, T_CONV_L, T_CONV_R]);
 
 export class World {
   /**
@@ -42,16 +50,25 @@ export class World {
     this.events = [];
 
     this.buttons = level.buttons.map((b) => ({ ...b, pressed: false }));
-    this.buttonById = new Map(this.buttons.map((b) => [b.id, b]));
+    this.levers = level.levers.map((l) => ({ ...l, kind: 'lever', pressed: false }));
+    // Tout ce qu'un lien peut citer : boutons, leviers, capteurs.
+    this.switchById = new Map([...this.buttons, ...this.levers].map((b) => [b.id, b]));
+    this.crumbles = level.crumbles.map((c) => ({ ...c, kind: 'crumble', dx: 0, dy: 0, state: 'intact', timer: 0 }));
+    this.springs = level.springs.map((sp) => ({ ...sp, kind: 'spring', dx: 0, dy: 0, squash: 0 }));
     // `open` va de 0 (fermée) à DOOR_TICKS (ouverte).
     this.doors = level.doors.map((d) => ({ ...d, open: 0, target: false, kind: 'door' }));
     this.blocks = level.blocks.map((b, i) => createBlock(b, i));
     this.platforms = level.platforms.map((p) => createPlatform(p));
-    this.lasers = level.lasers.map((l) => ({ ...l, on: !l.link, ex: l.ox, ey: l.oy, hit: null }));
+    this.lasers = level.lasers.map((l) => ({
+      ...l, linkOn: !l.link, on: !l.link, ex: l.ox, ey: l.oy, hit: null, pressed: false, latched: false,
+    }));
+    for (const l of this.lasers) if (l.sensor) this.switchById.set(l.sensor, l);
 
     this.actors = echoes.map((e, i) => createActor(level.spawn, i, e.tape, e.attempt));
     this.player = createActor(level.spawn, echoes.length, null, attempt);
     this.actors.push(this.player);
+    for (const l of this.lasers) if (l.link) l.linkOn = this.linkActive(l.link);
+    for (const pf of this.platforms) pf.active = this.linkActive(pf);
     this.computeBeams();
   }
 
@@ -89,16 +106,25 @@ export class World {
       const bits = actorInput(a, this.tick, playerInput);
       if (!a.dead) stepActor(this, a, bits);
     }
+    // 3 bis. Échafaudages : ils cèdent peu après qu'on s'y est posé (ou agrippé).
+    this.updateCrumbles();
+    // Ressorts : quiconque pose le pied dessus (en marchant ou en tombant) repart en l'air.
+    for (const sp of this.springs) {
+      if (sp.squash > 0) sp.squash--;
+      for (const o of this.bodies()) {
+        if (o.vy >= 0 && overlaps(o, sp)) bounceBody(this, o, sp);
+      }
+    }
     // 4. Faisceaux.
     this.computeBeams();
     const p = this.player;
-    if (!p.dead && this.lasers.some((l) => l.hit === p)) {
+    if (!p.dead && this.lasers.some((l) => !l.sensor && l.hit === p)) {
       p.dead = true;
       p.vx = 0;
       p.vy = 0;
       this.emit('death', p);
     }
-    // 5. Boutons.
+    // 5. Boutons, leviers, capteurs.
     const bodies = this.bodies();
     for (const b of this.buttons) {
       const pressed = bodies.some((o) => overlaps(o, b));
@@ -107,13 +133,25 @@ export class World {
         this.emit(pressed ? 'button-down' : 'button-up', b);
       }
     }
+    // Un levier bascule quand un acteur, debout devant lui, appuie sur Bas / interaction.
+    for (const lv of this.levers) {
+      for (const a of this.liveActors()) {
+        if ((a.actPressed || a.downPressed) && a.onGround && !a.climbing && overlaps(a, lv)) {
+          lv.pressed = !lv.pressed;
+          this.emit('lever', lv);
+        }
+      }
+    }
+    for (const l of this.lasers) {
+      if (!l.sensor) continue;
+      const cut = l.on && l.hit !== null;
+      if (cut && l.latch && !l.latched) { l.latched = true; this.emit('alarm', l); }
+      const pressed = cut || l.latched;
+      if (pressed !== l.pressed) { l.pressed = pressed; this.emit(pressed ? 'sensor-on' : 'sensor-off', l); }
+    }
     // 6. Mécanismes reliés.
     for (const d of this.doors) this.updateDoor(d);
-    for (const l of this.lasers) {
-      if (!l.link) continue;
-      const on = this.linkActive(l.link);
-      if (on !== l.on) { l.on = on; this.emit(on ? 'laser-on' : 'laser-off', l); }
-    }
+    for (const l of this.lasers) if (l.link) l.linkOn = this.linkActive(l.link);
     for (const pf of this.platforms) {
       const active = this.linkActive(pf);
       if (active !== pf.active) { pf.active = active; this.emit(active ? 'platform-on' : 'platform-off', pf); }
@@ -138,11 +176,36 @@ export class World {
     this.tick++;
   }
 
-  /** Condition {buttons, mode, invert} évaluée sur l'état des boutons. */
+  /** Condition {buttons, mode, invert} évaluée sur l'état des boutons, leviers, capteurs. */
   linkActive(link) {
-    const states = link.buttons.map((id) => this.buttonById.get(id).pressed);
-    const v = link.mode === 'or' ? states.some(Boolean) : states.every(Boolean);
+    const states = link.buttons.map((id) => this.switchById.get(id).pressed);
+    let v;
+    if (link.mode === 'or') v = states.some(Boolean);
+    else if (link.mode === 'xor') v = states.filter(Boolean).length % 2 === 1;
+    else v = states.every(Boolean);
     return link.invert ? !v : v;
+  }
+
+  /** Échafaudages : intacts, puis tremblants, puis effondrés (jusqu'à la fin de la tentative). */
+  updateCrumbles() {
+    for (const c of this.crumbles) {
+      if (c.state === 'intact') {
+        const loaded = this.bodies().some((o) => o.ground === c)
+          || this.liveActors().some((a) => a.climbing && this.blockerFor(a, 'x', a.facing * 2 * 16) === c);
+        if (loaded) { c.state = 'shaking'; c.timer = CRUMBLE_TICKS; this.emit('crumble-shake', c); }
+      } else if (c.state === 'shaking' && --c.timer <= 0) {
+        c.state = 'gone';
+        this.emit('crumble', c);
+      }
+    }
+  }
+
+  /** Allumé maintenant ? (boutons reliés, et cycle éventuel) */
+  laserOn(l) {
+    if (!l.linkOn) return false;
+    if (!l.cycle) return true;
+    const period = l.cycle[0] + l.cycle[1];
+    return ((this.tick + l.phase) % period + period) % period < l.cycle[0];
   }
 
   updateDoor(d) {
@@ -202,6 +265,11 @@ export class World {
       for (let c = c0; c <= c1; c++) {
         const t = this.tileAt(c, r);
         if (t === T_SOLID) return TILE_HIT;
+        if (t === T_ICE) return ICE_HIT;
+        if (t === T_CONV_L) return CONV_L_HIT;
+        if (t === T_CONV_R) return CONV_R_HIT;
+        if (t === T_GHOST && body.kind !== 'echo') return TILE_HIT;
+        if (t === T_GLASS && body.kind === 'echo') return TILE_HIT;
         if (t === T_ONEWAY && falling) {
           const top = r * TILE_SUB;
           if (oldBottom <= top && newBottom > top) return TILE_HIT;
@@ -215,10 +283,14 @@ export class World {
       if (d.open >= DOOR_TICKS) continue;
       if (overlaps(rect, doorSolidRect(d, d.open))) return d;
     }
-    // Plateformes mobiles et valises.
+    // Plateformes mobiles, échafaudages, ressorts et valises.
     for (const p of this.platforms) {
       if (p !== ignore && overlaps(rect, p)) return p;
     }
+    for (const c of this.crumbles) {
+      if (c.state !== 'gone' && overlaps(rect, c)) return c;
+    }
+
     for (const b of this.blocks) {
       if (b !== body && b !== ignore && overlaps(rect, b)) return b;
     }
@@ -247,11 +319,13 @@ export class World {
   computeBeams() {
     for (const l of this.lasers) {
       l.hit = null;
+      const on = this.laserOn(l);
+      if (on !== l.on) { l.on = on; this.emit(on ? 'laser-on' : 'laser-off', l); }
       if (!l.on) { l.ex = l.ox; l.ey = l.oy; continue; }
       // Jusqu'au premier mur, case par case.
       let c = Math.floor((l.ox + l.dx) / TILE_SUB);
       let r = Math.floor((l.oy + l.dy) / TILE_SUB);
-      while (this.tileAt(c, r) !== T_SOLID) { c += l.dx; r += l.dy; }
+      while (!OPAQUE.has(this.tileAt(c, r))) { c += l.dx; r += l.dy; }
       let dist; // longueur jusqu'au mur, en sous-pixels
       if (l.dx > 0) dist = c * TILE_SUB - l.ox;
       else if (l.dx < 0) dist = l.ox - (c + 1) * TILE_SUB;
@@ -262,6 +336,7 @@ export class World {
       const candidates = [
         ...this.doors.filter((d) => d.open < DOOR_TICKS).map((d) => doorSolidRect(d, d.open)),
         ...this.platforms,
+        ...this.crumbles.filter((cr) => cr.state !== 'gone'),
         ...this.blocks,
         ...this.liveActors(),
       ];
@@ -276,12 +351,26 @@ export class World {
         d = Math.max(0, d);
         if (d < dist || (d === dist && !l.hit)) {
           dist = d;
-          l.hit = o.kind === undefined ? null : o; // rectangle de porte : simple obstacle
+          // Porte, échafaudage : simples obstacles ; corps (acteur, valise, plateforme) : touché.
+          l.hit = o.kind === undefined || o.kind === 'crumble' ? null : o;
         }
       }
       l.ex = l.ox + l.dx * dist;
       l.ey = l.oy + l.dy * dist;
     }
+  }
+}
+
+/** Rebond sur un ressort : acteur (dash rechargé) ou valise (un peu moins haut). */
+function bounceBody(world, o, sp) {
+  if (o.kind === 'block') {
+    o.vy = -Math.trunc(SPRING_VEL * 0.8);
+    o.onGround = false;
+    o.ground = null;
+    sp.squash = 8;
+    world.emit('spring', o);
+  } else {
+    bounce(world, o, sp);
   }
 }
 

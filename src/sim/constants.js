@@ -40,6 +40,15 @@ export const T_EMPTY = 0;
 export const T_SOLID = 1;
 /** Plateforme fine : traversable par-dessous, solide quand on retombe dessus. */
 export const T_ONEWAY = 2;
+/** Glace : solide, glissante, impossible d'y rester agrippé. */
+export const T_ICE = 3;
+/** Tapis roulants : solides, emportent ce qui est posé dessus. */
+export const T_CONV_L = 4;
+export const T_CONV_R = 5;
+/** Tableau : arrête le joueur et les valises, mais les échos le traversent. */
+export const T_GHOST = 6;
+/** Vitrine : laisse passer le joueur et les valises, arrête les échos. */
+export const T_GLASS = 7;
 
 // --- Personnage (joueur et échos partagent exactement ces valeurs) -------
 export const ACTOR_W = 10 * SUB;
@@ -132,3 +141,14 @@ export const DASH_END_MAX_VX = 30;
 
 /** Coin de plafond rattrapé en sautant : décalage maximal (px). */
 export const CORNER_NUDGE = 4;
+
+// --- Mécanismes des chapitres suivants --------------------------------------
+/** Sur la glace, on accélère et on freine à peine (sous-pixels par tick²). */
+export const ICE_ACCEL = 1;
+/** Vitesse d'un tapis roulant (sous-pixels par tick) : 0,5 px/tick. */
+export const CONVEYOR_SPEED = 8;
+/** Ressort : impulsion verticale (≈ 5 cases de haut). */
+export const SPRING_VEL = 128;
+export const SPRING_H = 6 * SUB;
+/** Échafaudage fragile : délai entre le premier appui et l'effondrement (ticks). */
+export const CRUMBLE_TICKS = 30;

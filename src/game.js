@@ -27,8 +27,15 @@ export class Game {
    *           save: import('./core/save.js').Save,
    *           menus: import('./ui/menus.js').Menus }} deps
    */
-  constructor({ levels, input, renderer, sound, save, menus }) {
-    this.levels = levels.map(parseLevel);
+  constructor({ levels, chapters = {}, input, renderer, sound, save, menus }) {
+    this.chapters = chapters;
+    // Numérotation : « 2.3 » = troisième pièce du chapitre 2.
+    const count = {};
+    this.levels = levels.map((def, i) => {
+      const lv = parseLevel(def);
+      count[lv.chapter] = (count[lv.chapter] ?? 0) + 1;
+      return Object.freeze({ ...lv, number: i + 1, label: `${lv.chapter}.${count[lv.chapter]}` });
+    });
     this.input = input;
     this.renderer = renderer;
     this.sound = sound;
@@ -74,6 +81,7 @@ export class Game {
     if (this.mode === 'playing') this.setMode('paused');
     this.menus.levels({
       levels: this.levels,
+      chapters: this.chapters,
       save: this.save,
       thumb: levelThumb,
       current: this.index,
@@ -169,6 +177,19 @@ export class Game {
       return;
     }
     const hasNext = this.index < this.levels.length - 1;
+    if (level.chapterEnd && hasNext) {
+      // Fin de chapitre : le train part, on change de lieu.
+      const next = this.levels[this.index + 1];
+      this.menus.chapter({
+        done: this.chapters[level.chapter]?.title ?? '',
+        number: next.chapter,
+        title: this.chapters[next.chapter]?.title ?? '',
+        stats,
+        onNext: () => this.play(this.index + 1),
+        onLevels: () => this.showLevels(() => this.showTitle()),
+      });
+      return;
+    }
     this.menus.won({
       level,
       stats,

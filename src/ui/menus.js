@@ -117,9 +117,15 @@ export class Menus {
    *           thumb: (level: object) => HTMLCanvasElement, current: number,
    *           onPick: (i: number) => void, onBack: () => void }} p
    */
-  levels({ levels, save, thumb, current, onPick, onBack }) {
+  levels({ levels, chapters = {}, save, thumb, current, onPick, onBack }) {
     const list = h('ol', { class: 'ui-levels' });
+    let chapter = null;
     levels.forEach((lv, i) => {
+      if (lv.chapter !== chapter) {
+        chapter = lv.chapter;
+        const title = chapters[chapter]?.title ?? '';
+        list.append(h('li', { class: 'ui-chapter' }, `Chapitre ${chapter}`, h('span', {}, title)));
+      }
       const unlocked = save.isUnlocked(levels, i);
       const rec = save.level(lv.id);
       let status;
@@ -135,7 +141,7 @@ export class Menus {
       },
       h('span', { class: 'ui-thumb' }, unlocked ? thumb(lv) : h('span', { class: 'ui-lock' }, '?')),
       h('span', { class: 'ui-level-text' },
-        h('span', { class: 'ui-level-num' }, String(i + 1).padStart(2, '0')),
+        h('span', { class: 'ui-level-num' }, lv.label ?? String(i + 1).padStart(2, '0')),
         h('span', { class: 'ui-level-name' }, lv.name),
         h('span', { class: 'ui-level-status' }, status),
       ));
@@ -184,6 +190,20 @@ export class Menus {
       h('div', { class: 'ui-actions' },
         hasNext ? this.button('Continuer', onNext, { primary: true, autofocus: true }) : null,
         this.button('Rejouer la pièce', onReplay, { autofocus: !hasNext }),
+        this.button('Niveaux', onLevels),
+      ),
+    ), onLevels);
+  }
+
+  /** Fin de chapitre : le train part, et un nouveau lieu commence. */
+  chapter({ done, number, title, stats, onNext, onLevels }) {
+    this.show('chapter', h('div', { class: 'ui-screen ui-chapter-card' },
+      h('p', { class: 'ui-kicker' }, `${done} · terminé`),
+      h('p', { class: 'ui-note dim' }, `${stats.attempts} essais · ${fmtTime(stats.ticks)}`),
+      h('p', { class: 'ui-kicker' }, `Chapitre ${number}`),
+      h('h2', { class: 'ui-chapter-title' }, title),
+      h('div', { class: 'ui-actions' },
+        this.button('Continuer', onNext, { primary: true, autofocus: true }),
         this.button('Niveaux', onLevels),
       ),
     ), onLevels);

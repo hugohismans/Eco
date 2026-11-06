@@ -22,9 +22,12 @@ import { themeOf, paintTiles, floorRowBelow } from './themes.js';
 import { paintDecor } from './decor.js';
 import { Lighting } from './lighting.js';
 import { drawHud } from './hud.js';
+import { drawElements, drawWeather } from './elements.js';
 import { sprite, rimSprite, outlineSprite, WALK_CYCLE, SPRITE_DX } from './sprites.js';
 
 const TRAIL_LEN = 14;
+/** Couleur des barrières lumineuses (capteurs non mortels). */
+const SENSOR = '#6ad2ff';
 const TRAIL_EVERY = 2; // ticks entre deux échantillons de traînée
 
 export class Renderer {
@@ -106,6 +109,7 @@ export class Renderer {
     for (const b of world.buttons) this.drawButton(P, E, b, lights);
     for (const d of world.doors) this.drawDoor(P, E, d, lights);
     for (const pf of world.platforms) this.drawPlatform(P, E, pf, alpha, lights, t);
+    drawElements(P, E, world, lights, t);
 
     const occluders = [];
     for (const b of world.blocks) this.drawBlock(P, b, alpha, occluders);
@@ -113,6 +117,7 @@ export class Renderer {
     this.drawActors(P, E, world, alpha, lights, occluders, t);
     this.drawStayHint(E, world, t);
     this.drawDust(E, volumes, t);
+    drawWeather(E, scene.theme.weather, this.view, t);
     this.drawReplayRipple(E, session, world);
 
     // --- Lumière -------------------------------------------------------------
@@ -424,35 +429,50 @@ export class Renderer {
       rect(P, cx - 5, cy + 5, 10, 1, C.iron0);
       const lx = cx + l.dx * 5, ly = cy + l.dy * 5;
       rect(P, lx - 2, ly - 2, 4, 4, C.iron0);
-      rect(E, lx - 1, ly - 1, 2, 2, l.on ? C.signalRed : '#401010');
+      // Barrière lumineuse (capteur) : bleue ; alarme déclenchée : rouge qui clignote.
+      const col = l.sensor ? (l.latched ? C.signalRed : SENSOR) : C.signalRed;
+      const dim = l.sensor ? '#103040' : '#401010';
+      // Faisceau cyclique : la lentille clignote juste avant de s'allumer.
+      let warn = false;
+      if (l.cycle && !l.on && l.linkOn) {
+        const period = l.cycle[0] + l.cycle[1];
+        const pos = (((world.tick + l.phase) % period) + period) % period;
+        warn = period - pos <= 30 && ((world.tick >> 2) & 1) === 0;
+      }
+      rect(E, lx - 1, ly - 1, 2, 2, l.on || warn ? col : dim);
+      if (warn) lights.push({ x: lx, y: ly, r: 18, color: col, intensity: 0.6, flicker: 0, shadows: false, halo: 0.8 });
+      if (l.sensor && l.latched && ((world.tick >> 4) & 1)) {
+        lights.push({ x: cx, y: cy - 10, r: 90, color: C.signalRed, intensity: 0.5, flicker: 0, shadows: false, halo: 0.5 });
+      }
       if (!l.on) continue;
       const ox = l.ox / SUB, oy = l.oy / SUB + LEVEL_Y;
       const ex = l.ex / SUB, ey = l.ey / SUB + LEVEL_Y;
       const shimmer = 0.75 + 0.25 * Math.sin(t * 40);
       if (l.dx !== 0) {
         const x0 = Math.min(ox, ex), len = Math.abs(ex - ox);
-        E.globalAlpha = shimmer;
-        rect(E, x0, oy - 1, len, 2, C.signalRed);
-        rect(E, x0, oy, len, 1, '#ffd0c8');
+        E.globalAlpha = shimmer * (l.sensor ? 0.7 : 1);
+        rect(E, x0, oy - 1, len, l.sensor ? 1 : 2, col);
+        if (!l.sensor) rect(E, x0, oy, len, 1, '#ffd0c8');
       } else {
         const y0 = Math.min(oy, ey), len = Math.abs(ey - oy);
-        E.globalAlpha = shimmer;
-        rect(E, ox - 1, y0, 2, len, C.signalRed);
-        rect(E, ox, y0, 1, len, '#ffd0c8');
+        E.globalAlpha = shimmer * (l.sensor ? 0.7 : 1);
+        rect(E, ox - 1, y0, l.sensor ? 1 : 2, len, col);
+        if (!l.sensor) rect(E, ox, y0, 1, len, '#ffd0c8');
       }
       E.globalAlpha = 1;
       // Étincelles au point d'impact.
       for (let i = 0; i < 5; i++) {
         const a = t * 9 + i * 1.7;
         const r = (Math.sin(a * 1.3) + 1) * 2;
-        px(E, Math.round(ex - l.dx * 1 + Math.cos(a) * r * (l.dx ? 0.5 : 1)), Math.round(ey - l.dy + Math.sin(a) * r), i % 2 ? C.lamp4 : C.signalRed);
+        if (l.sensor && !l.hit) break;
+        px(E, Math.round(ex - l.dx * 1 + Math.cos(a) * r * (l.dx ? 0.5 : 1)), Math.round(ey - l.dy + Math.sin(a) * r), i % 2 ? C.lamp4 : col);
       }
-      volumes.push({ type: 'beam', x0: ox, y0: oy, x1: ex, y1: ey, color: C.signalRed, alpha: 0.35 });
+      volumes.push({ type: 'beam', x0: ox, y0: oy, x1: ex, y1: ey, color: col, alpha: l.sensor ? 0.2 : 0.35 });
       const len = Math.hypot(ex - ox, ey - oy);
       for (let d = 12; d < len; d += 28) {
-        lights.push({ x: ox + (l.dx * d), y: oy + (l.dy * d), r: 24, color: C.signalRed, intensity: 0.35, flicker: 0, shadows: false, halo: 0 });
+        lights.push({ x: ox + (l.dx * d), y: oy + (l.dy * d), r: 24, color: col, intensity: l.sensor ? 0.2 : 0.35, flicker: 0, shadows: false, halo: 0 });
       }
-      lights.push({ x: ex, y: ey, r: 30, color: C.signalRed, intensity: 0.7, flicker: 0, shadows: false, halo: 0.6 });
+      lights.push({ x: ex, y: ey, r: 30, color: col, intensity: l.sensor ? 0.35 : 0.7, flicker: 0, shadows: false, halo: 0.6 });
     }
   }
 

@@ -403,3 +403,20 @@ body.touch.portrait:not(.rotate-dismissed) #rotate { display: flex; }
 body.touch:not(.portrait) #stick-zone { width: 42%; height: 78%; bottom: 0; }
 body.touch:not(.portrait) #stick-ghost { top: calc(100% - 90px); }
 body.touch:not(.portrait) #pad-buttons { bottom: calc(14px + var(--safe-bottom)); }
+
+/* Sélecteur : un en-tête par chapitre. */
+.ui-chapter {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(8 * var(--px));
+  margin-top: calc(6 * var(--px));
+  padding: 0 calc(2 * var(--px));
+  color: var(--lamp);
+  text-shadow: var(--px) var(--px) 0 #05060f;
+}
+.ui-chapter span { color: var(--text-dim); }
+.ui-chapter-title {
+  font-size: calc(16 * var(--px)) !important;
+  line-height: 1.4;
+}
+.ui-chapter-card { background: rgba(5, 6, 15, 0.45); }

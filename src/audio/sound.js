@@ -22,6 +22,13 @@ const AMBIENCE = {
   attente: { hum: 0.016, wind: 0.008, reverb: 0.26 },
   souterrain: { hum: 0.03, wind: 0.02, reverb: 0.45 },
   menu: { hum: 0.008, wind: 0.035, reverb: 0.2 },
+  neige: { hum: 0.003, wind: 0.08, reverb: 0.1 },
+  chalet: { hum: 0.012, wind: 0.03, reverb: 0.15 },
+  ville: { hum: 0.012, wind: 0.05, reverb: 0.12 },
+  rue: { hum: 0.016, wind: 0.035, reverb: 0.2 },
+  musee: { hum: 0.01, wind: 0.005, reverb: 0.55 },
+  reserve: { hum: 0.025, wind: 0.008, reverb: 0.35 },
+  halle: { hum: 0.008, wind: 0.02, reverb: 0.6 },
 };
 
 export class Sound {
@@ -277,6 +284,25 @@ export class Sound {
         break;
       case 'tired':
         this.tone({ type: 'triangle', f: 300, to: 180, dur: 0.18, gain: 0.04 * v, wet: 0.2 });
+        break;
+      case 'lever':
+        this.noise({ type: 'lowpass', f: 500, dur: 0.08, gain: 0.12 * v, wet: 0.3 });
+        this.tone({ type: 'square', f: 180, to: 120, dur: 0.06, gain: 0.04 * v, lp: 900 });
+        break;
+      case 'crumble-shake':
+        this.noise({ f: 900, to: 400, q: 3, dur: 0.4, gain: 0.05 * v, wet: 0.2 });
+        break;
+      case 'crumble':
+        this.noise({ type: 'lowpass', f: 700, to: 120, dur: 0.5, gain: 0.16, wet: 0.4 });
+        break;
+      case 'spring':
+        this.tone({ type: 'triangle', f: 220, to: 880, dur: 0.18, gain: 0.07 * v, wet: 0.3 });
+        break;
+      case 'alarm':
+        for (let i = 0; i < 6; i++) this.tone({ type: 'square', f: i % 2 ? 880 : 660, dur: 0.18, gain: 0.04, delay: i * 0.2, lp: 2400, wet: 0.5 });
+        break;
+      case 'sensor-on':
+        this.tone({ type: 'sine', f: 1320, dur: 0.05, gain: 0.025 * v, wet: 0.2 });
         break;
       case 'land':
         this.noise({ type: 'lowpass', f: 420, dur: 0.06, gain: 0.09 * v, wet: 0.1 });

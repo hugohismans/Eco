@@ -6,7 +6,7 @@ import { startLoop } from './core/loop.js';
 import { Renderer } from './render/renderer.js';
 import { computeView, fitCanvas, view } from './render/screen.js';
 import { Game } from './game.js';
-import { LEVELS } from './levels/index.js';
+import { LEVELS, CHAPTERS } from './levels/index.js';
 import { Sound } from './audio/sound.js';
 import { Save } from './core/save.js';
 import { Menus } from './ui/menus.js';
@@ -127,7 +127,7 @@ await document.fonts.load('8px "Press Start 2P"', 'ÉCHO éà').catch(() => {});
 renderer = new Renderer(canvas);
 renderer.quality = quality;
 layout();
-const game = new Game({ levels: LEVELS, input, renderer, sound, save, menus });
+const game = new Game({ levels: LEVELS, chapters: CHAPTERS, input, renderer, sound, save, menus });
 
 // Accès direct à un niveau (tests) : …/Eco/#niveau=2 ; sinon, l'écran titre.
 const m = location.hash.match(/niveau=(\d+)/);

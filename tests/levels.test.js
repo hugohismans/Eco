@@ -321,15 +321,6 @@ test('niveau 10 : monter dans le train', () => {
   assert.equal(s.outcome, 'exit');
 });
 
-test('niveau 10 : rester sur le quai', () => {
-  const s = new Session(load('10-train.json'));
-  const bot = new Bot(s);
-  prepareTrain(s, bot);
-  bot.walkTo(colCenter(9) + 8);
-  bot.step(IN_DOWN);
-  assert.equal(s.outcome, 'stay');
-});
-
 test('niveau 10 : impossible de sauter de la passerelle par-dessus la barrière', () => {
   const s = new Session(load('10-train.json'));
   const bot = new Bot(s);

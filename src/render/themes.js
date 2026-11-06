@@ -7,7 +7,12 @@
 // L'éclairage (lighting.js) multiplie ensuite l'albedo par une carte de lumière
 // lisse, puis ajoute l'émissif et son halo.
 
-import { GRID_W, GRID_H, TILE, T_SOLID, T_ONEWAY } from '../sim/constants.js';
+import {
+  GRID_W, GRID_H, TILE, T_SOLID, T_ONEWAY, T_ICE, T_CONV_L, T_CONV_R, T_GHOST, T_GLASS,
+} from '../sim/constants.js';
+import {
+  paintMountains, paintChalet, paintCity, paintStreet, paintMuseum, paintStorage, paintHall,
+} from './backdrops.js';
 import { C } from './palette.js';
 import { rect, px, checker, sparse, rng } from './pixel.js';
 import { VIEW_W, VIEW_H, LEVEL_Y, sceneBounds } from './screen.js';
@@ -18,15 +23,17 @@ export function drawTileAt(level, col, row) {
   const r = Math.max(0, Math.min(GRID_H - 1, row));
   if (col < 0 || col >= GRID_W) {
     // Sur les côtés : on prolonge le mur s'il y en a un, sinon l'espace reste ouvert.
-    return level.tiles[r * GRID_W + c] === T_SOLID ? T_SOLID : 0;
+    return MASSIVE.has(level.tiles[r * GRID_W + c]) ? level.tiles[r * GRID_W + c] : 0;
   }
   return level.tiles[r * GRID_W + c];
 }
 
-const solidAt = (level, c, r) => drawTileAt(level, c, r) === T_SOLID;
+/** Cases « pleines » pour le dessin (bords, ombres, lambris). */
+const MASSIVE = new Set([T_SOLID, T_ICE, T_CONV_L, T_CONV_R]);
+export const solidAt = (level, c, r) => MASSIVE.has(drawTileAt(level, c, r));
 
 /** Cases (rangées, colonnes) couvrant la zone à peindre, avec une marge. */
-function cellRange(B) {
+export function cellRange(B) {
   return {
     r0: Math.floor((B.y0 - LEVEL_Y) / TILE) - 2,
     r1: Math.ceil((B.y1 - LEVEL_Y) / TILE) + 2,
@@ -120,6 +127,42 @@ export const THEMES = {
     backdrop: paintSky,
   },
 };
+
+// --- Chapitres 2 à 4 -----------------------------------------------------
+Object.assign(THEMES, {
+  /** La gare d'altitude, dehors : montagnes, sapins, neige qui tombe. */
+  neige: {
+    ambient: '#5e6cab', fog: { color: '#c4d2f0', alpha: 0.14 }, tiles: 'snowstone', wet: false,
+    weather: 'snow', backdrop: paintMountains,
+  },
+  /** Le chalet : bois de sapin, poêle, fenêtres givrées. */
+  chalet: {
+    ambient: '#4a4880', fog: null, tiles: 'wood', wet: false, weather: null, backdrop: paintChalet,
+  },
+  /** La ville, sur les toits : pluie, enseignes, ligne des immeubles. */
+  ville: {
+    ambient: '#565290', fog: { color: '#9a7aa8', alpha: 0.1 }, tiles: 'roof', wet: true,
+    weather: 'rain', backdrop: paintCity,
+  },
+  /** La rue : façades, vitrines, pavés mouillés. */
+  rue: {
+    ambient: '#4c4a86', fog: { color: '#8fa6d8', alpha: 0.1 }, tiles: 'pavement', wet: true,
+    weather: 'rain', backdrop: paintStreet,
+  },
+  /** Le musée : tentures rouges, marbre, dorures. */
+  musee: {
+    ambient: '#4e4a86', fog: null, tiles: 'marble', wet: true, weather: null, backdrop: paintMuseum,
+  },
+  /** La réserve du musée : béton, rayonnages, caisses. */
+  reserve: {
+    ambient: '#3c4070', fog: null, tiles: 'concrete', wet: false, weather: null, backdrop: paintStorage,
+  },
+  /** La halle des locomotives : verrière de fer, la nuit au-dessus. */
+  halle: {
+    ambient: '#55609c', fog: { color: '#c4d2f0', alpha: 0.08 }, tiles: 'stone', wet: true,
+    weather: null, backdrop: paintHall,
+  },
+});
 
 export function themeOf(level) {
   return THEMES[level.theme] ?? THEMES.hall;
@@ -294,12 +337,23 @@ export function paintTiles(level, theme, A, B = SCENE) {
       const t = drawTileAt(level, c, r);
       const x = c * TILE, y = LEVEL_Y + r * TILE;
       if (t === T_SOLID) {
-        if (theme.tiles === 'stone') paintStone(level, A, c, r, x, y);
-        else if (theme.tiles === 'concrete') paintConcrete(level, A, c, r, x, y);
-        else if (theme.tiles === 'ballast') paintBallast(level, A, c, r, x, y);
+        const style = theme.tiles;
+        if (style === 'stone' || style === 'pavement') paintStone(level, A, c, r, x, y, style === 'stone');
+        else if (style === 'snowstone') { paintStone(level, A, c, r, x, y, false); paintSnowCap(level, A, c, r, x, y); }
+        else if (style === 'concrete') paintConcrete(level, A, c, r, x, y);
+        else if (style === 'ballast') paintBallast(level, A, c, r, x, y);
+        else if (style === 'wood') paintWood(level, A, c, r, x, y);
+        else if (style === 'roof') paintRoof(level, A, c, r, x, y);
+        else if (style === 'marble') paintMarble(level, A, c, r, x, y);
         else paintBrick(level, A, c, r, x, y);
       } else if (t === T_ONEWAY) {
         paintPlank(A, x, y);
+      } else if (t === T_ICE) {
+        paintIce(level, A, c, r, x, y);
+      } else if (t === T_CONV_L || t === T_CONV_R) {
+        paintConveyor(A, x, y);
+      } else if (t === T_GHOST) {
+        paintGhostFrame(level, A, c, r, x, y);
       }
     }
   }
@@ -316,7 +370,7 @@ export function paintTiles(level, theme, A, B = SCENE) {
   }
 }
 
-function paintStone(level, A, c, r, x, y) {
+function paintStone(level, A, c, r, x, y, safetyLine = true) {
   const top = !solidAt(level, c, r - 1);
   const left = !solidAt(level, c - 1, r);
   const right = !solidAt(level, c + 1, r);
@@ -335,7 +389,7 @@ function paintStone(level, A, c, r, x, y) {
     // Dalle du quai : nez de marche clair, ligne de sécurité jaunie.
     rect(A, x, y, TILE, 4, C.stone3);
     rect(A, x, y, TILE, 1, C.stone4);
-    rect(A, x, y + 2, TILE, 1, C.paper2);
+    if (safetyLine) rect(A, x, y + 2, TILE, 1, C.paper2);
     rect(A, x, y + 4, TILE, 1, C.stone0);
     for (let k = 1; k < TILE; k += 4) px(A, x + k, y + 3, C.stone2);
   }
@@ -406,6 +460,85 @@ function paintBallast(level, A, c, r, x, y) {
     rect(A, x, y - 4, TILE, 2, C.iron2);
     rect(A, x, y - 4, TILE, 1, C.stone4);
   }
+}
+
+/** Neige posée sur le dessus des murs, et quelques glaçons dessous. */
+function paintSnowCap(level, A, c, r, x, y) {
+  if (!solidAt(level, c, r - 1)) {
+    rect(A, x, y - 2, TILE, 4, C.moon1);
+    rect(A, x, y - 2, TILE, 1, C.moon2);
+    for (let k = 0; k < TILE; k += 5) px(A, x + k + (c % 3), y + 2, C.moon0);
+  }
+  if (!solidAt(level, c, r + 1)) {
+    for (let k = 2; k < TILE; k += 5) rect(A, x + k, y + TILE, 1, 2 + ((c + k) % 3), C.moon0);
+  }
+}
+
+function paintIce(level, A, c, r, x, y) {
+  rect(A, x, y, TILE, TILE, '#7fa6d6');
+  rect(A, x, y, TILE, 1, '#dcecff');
+  for (let k = 0; k < 3; k++) rect(A, x + 2 + k * 5, y + 3 + k * 3, 3, 1, '#c4dcf8');
+  rect(A, x + 9, y + 9, 4, 1, '#a8c6ee');
+  if (!solidAt(level, c - 1, r)) rect(A, x, y, 1, TILE, '#4d6ea0');
+  if (!solidAt(level, c + 1, r)) rect(A, x + TILE - 1, y, 1, TILE, '#4d6ea0');
+  if (!solidAt(level, c, r + 1)) {
+    rect(A, x, y + TILE - 1, TILE, 1, '#4d6ea0');
+    for (let k = 1; k < TILE; k += 4) rect(A, x + k, y + TILE, 1, 2 + (k % 3), '#a8c6ee');
+  }
+}
+
+function paintConveyor(A, x, y) {
+  rect(A, x, y, TILE, TILE, C.iron1);
+  rect(A, x, y, TILE, 4, C.iron0);
+  // Rouleaux (les chevrons qui défilent sont animés par le rendu).
+  for (let k = 3; k < TILE; k += 6) {
+    rect(A, x + k - 2, y + 6, 4, 4, C.iron2);
+    px(A, x + k - 1, y + 7, C.stone3);
+  }
+  rect(A, x, y + TILE - 2, TILE, 2, C.iron0);
+}
+
+/** Cadre doré d'un tableau (la toile, vivante, est dessinée par le rendu). */
+function paintGhostFrame(level, A, c, r, x, y) {
+  const g = (dc, dr) => drawTileAt(level, c + dc, r + dr) === T_GHOST;
+  rect(A, x, y, TILE, TILE, '#2e2440');
+  // La toile : un paysage de nuit, sombre.
+  for (let k = 3; k < TILE - 3; k += 3) px(A, x + k, y + 9 + ((c * 3 + k) % 3), '#4a3a5a');
+  if (!g(0, -1)) { rect(A, x, y, TILE, 3, C.brass); rect(A, x, y, TILE, 1, C.paper3); }
+  if (!g(0, 1)) { rect(A, x, y + TILE - 3, TILE, 3, C.brass); rect(A, x, y + TILE - 1, TILE, 1, C.wood1); }
+  if (!g(-1, 0)) { rect(A, x, y, 3, TILE, C.brass); rect(A, x, y, 1, TILE, C.paper3); }
+  if (!g(1, 0)) { rect(A, x + TILE - 3, y, 3, TILE, C.brass); rect(A, x + TILE - 1, y, 1, TILE, C.wood1); }
+}
+
+function paintWood(level, A, c, r, x, y) {
+  rect(A, x, y, TILE, TILE, C.wood2);
+  for (let k = 0; k < TILE; k += 5) {
+    rect(A, x, y + k + 4, TILE, 1, C.wood1);
+    px(A, x + ((c * 7 + k) % 14) + 1, y + k + 2, C.wood1);
+  }
+  rect(A, x, y, TILE, 1, C.wood3);
+  if (!solidAt(level, c, r - 1)) { rect(A, x, y, TILE, 3, C.wood3); rect(A, x, y, TILE, 1, C.wood4); }
+  if (!solidAt(level, c - 1, r)) rect(A, x, y, 1, TILE, C.wood0);
+  if (!solidAt(level, c + 1, r)) rect(A, x + TILE - 1, y, 1, TILE, C.wood0);
+}
+
+/** Toit de zinc : agrafes verticales, rebord clair. */
+function paintRoof(level, A, c, r, x, y) {
+  rect(A, x, y, TILE, TILE, '#4c5266');
+  for (let k = 3; k < TILE; k += 6) rect(A, x + k, y, 1, TILE, '#3a3f52');
+  for (let k = 5; k < TILE; k += 6) rect(A, x + k, y, 1, TILE, '#5e6580');
+  if (!solidAt(level, c, r - 1)) { rect(A, x, y, TILE, 2, '#8a92ac'); rect(A, x, y + 2, TILE, 1, '#2e3244'); }
+  if (!solidAt(level, c - 1, r)) rect(A, x, y, 1, TILE, '#2e3244');
+  if (!solidAt(level, c + 1, r)) rect(A, x + TILE - 1, y, 1, TILE, '#2e3244');
+}
+
+function paintMarble(level, A, c, r, x, y) {
+  rect(A, x, y, TILE, TILE, '#9c948a');
+  for (let k = 0; k < TILE; k++) px(A, x + k, y + Math.round(6 + 4 * Math.sin((c * TILE + k) / 5 + r)), '#857d74');
+  rect(A, x, y + TILE - 1, TILE, 1, '#7a736b');
+  if (!solidAt(level, c, r - 1)) { rect(A, x, y, TILE, 3, '#c4bcb0'); rect(A, x, y + 3, TILE, 1, C.brass); }
+  if (!solidAt(level, c - 1, r)) rect(A, x, y, 1, TILE, '#6e675f');
+  if (!solidAt(level, c + 1, r)) rect(A, x + TILE - 1, y, 1, TILE, '#6e675f');
 }
 
 function paintPlank(A, x, y) {

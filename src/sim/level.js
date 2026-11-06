@@ -28,10 +28,21 @@
 //   1…9  porte (les cases d'un même chiffre forment un rectangle)
 //   B  valise    K  caisse  (blocs poussables, posés au bas de leur case)
 //   > < v ^  émetteur de faisceau (case pleine), tirant dans ce sens
+//   j…r  levier (bascule : on l'actionne avec Bas / interaction)
+//   ~  glace (glissante, on ne s'y agrippe pas)
+//   { }  tapis roulant vers la gauche / la droite
+//   %  échafaudage fragile (cède peu après qu'on s'y est posé)
+//   S  ressort (renvoie en l'air)
+//   !  tableau : les échos le traversent, pas le joueur ni les valises
+//   ?  vitrine : le joueur et les valises la traversent, pas les échos
 //
 // Une porte est ouverte, un faisceau est allumé, une plateforme est « active »
-// quand ses boutons le sont : tous (and) ou au moins un (or) ; « invert »
-// renverse la condition. Un faisceau sans boutons est toujours allumé.
+// quand ses boutons le sont : tous (and), au moins un (or), ou un nombre
+// impair (xor) ; « invert » renverse la condition. « buttons » peut citer des
+// boutons, des leviers ou des capteurs (faisceaux « sensor »).
+// Faisceaux, options : "cycle": [ticks allumé, ticks éteint], "phase": décalage ;
+// "sensor": "id" (barrière lumineuse non mortelle, active quand on la coupe),
+// "latch": true (une fois coupée, elle reste active : une alarme).
 //
 // Le résultat est une structure immuable, en sous-pixels, que le monde lit.
 
@@ -39,7 +50,10 @@ import {
   GRID_W, GRID_H, TILE, TILE_SUB, SUB, TPS,
   T_EMPTY, T_SOLID, T_ONEWAY, ACTOR_W, ACTOR_H,
   BLOCK_TYPES, PLATFORM_H, PLATFORM_SPEED, ABILITIES,
+  T_ICE, T_CONV_L, T_CONV_R, T_GHOST, T_GLASS, SPRING_H,
 } from './constants.js';
+
+const TILE_CHARS = { '#': T_SOLID, '=': T_ONEWAY, '~': T_ICE, '{': T_CONV_L, '}': T_CONV_R, '!': T_GHOST, '?': T_GLASS };
 
 /** Hauteur visible d'un bouton relevé (px) : sert aussi de capteur. */
 const BUTTON_SENSOR_H = 4;
@@ -69,14 +83,31 @@ export function parseLevel(def) {
   const doorCells = new Map(); // chiffre -> liste de cases
   const blocks = [];
   const emitters = [];
+  const levers = [];
+  const crumbles = [];
+  const springs = [];
 
   for (let r = 0; r < GRID_H; r++) {
     for (let c = 0; c < GRID_W; c++) {
       const ch = grid[r][c];
       let t = T_EMPTY;
-      if (ch === '#') t = T_SOLID;
-      else if (ch === '=') t = T_ONEWAY;
+      if (TILE_CHARS[ch] !== undefined) t = TILE_CHARS[ch];
       else if (ch === '.' || ch === ' ') t = T_EMPTY;
+      else if (ch >= 'j' && ch <= 'r') {
+        if (levers.some((l) => l.id === ch)) throw new Error(`${where} : le levier « ${ch} » apparaît deux fois.`);
+        levers.push({ id: ch, col: c, row: r, x: c * TILE_SUB, y: r * TILE_SUB, w: TILE_SUB, h: TILE_SUB });
+      } else if (ch === '%') {
+        // Les cases voisines sur une même rangée forment une seule passerelle.
+        const prev = crumbles[crumbles.length - 1];
+        if (prev && prev.row === r && prev.col + prev.cols === c) {
+          prev.cols++;
+          prev.w += TILE_SUB;
+        } else {
+          crumbles.push({ col: c, row: r, cols: 1, x: c * TILE_SUB, y: r * TILE_SUB, w: TILE_SUB, h: TILE_SUB });
+        }
+      } else if (ch === 'S') {
+        springs.push({ col: c, row: r, x: c * TILE_SUB, y: (r + 1) * TILE_SUB - SPRING_H, w: TILE_SUB, h: SPRING_H });
+      }
       else if (ch === 'P') {
         if (spawn) throw new Error(`${where} : un seul départ « P » est permis.`);
         spawn = { col: c, row: r };
@@ -111,7 +142,12 @@ export function parseLevel(def) {
   if (!spawn) throw new Error(`${where} : il manque le départ « P ».`);
   if (exitCells.length === 0) throw new Error(`${where} : il manque la sortie « E ».`);
 
-  const buttonIds = new Set(buttons.map((b) => b.id));
+  // Capteurs : des faisceaux « sensor », avec un identifiant utilisable comme un bouton.
+  const sensorIds = (def.lasers ?? []).filter((l) => l.sensor).map((l) => String(l.sensor));
+  const buttonIds = new Set([...buttons.map((b) => b.id), ...levers.map((l) => l.id), ...sensorIds]);
+  if (buttonIds.size !== buttons.length + levers.length + sensorIds.length) {
+    throw new Error(`${where} : un identifiant de bouton, de levier ou de capteur est utilisé deux fois.`);
+  }
   /** Vérifie une liaison {buttons, mode, invert} et la normalise. */
   const link = (l, label, required) => {
     if (!l || !Array.isArray(l.buttons) || l.buttons.length === 0) {
@@ -122,8 +158,8 @@ export function parseLevel(def) {
       if (!buttonIds.has(b)) throw new Error(`${where} : ${label} cite un bouton « ${b} » absent de la grille.`);
     }
     const mode = (l.mode ?? 'and').toLowerCase();
-    if (mode !== 'and' && mode !== 'or') {
-      throw new Error(`${where} : mode « ${l.mode} » inconnu pour ${label} (and / or).`);
+    if (mode !== 'and' && mode !== 'or' && mode !== 'xor') {
+      throw new Error(`${where} : mode « ${l.mode} » inconnu pour ${label} (and / or / xor).`);
     }
     return { buttons: [...l.buttons], mode, invert: !!l.invert };
   };
@@ -154,7 +190,11 @@ export function parseLevel(def) {
       dy,
       ox: cx + dx * (TILE_SUB >> 1),
       oy: cy + dy * (TILE_SUB >> 1),
-      link: cfg ? link(cfg, `le faisceau (${e.col}, ${e.row})`, true) : null,
+      link: cfg?.buttons ? link(cfg, `le faisceau (${e.col}, ${e.row})`, true) : null,
+      cycle: cfg?.cycle ? [cfg.cycle[0] | 0, cfg.cycle[1] | 0] : null,
+      phase: cfg?.phase | 0,
+      sensor: cfg?.sensor ? String(cfg.sensor) : null,
+      latch: !!cfg?.latch,
     };
   });
   for (const l of laserLinks) {
@@ -226,6 +266,9 @@ export function parseLevel(def) {
     exit: cellsToRect(exitCells, `${where}, sortie`),
     exitStyle: def.exitStyle ?? 'door',
     buttons,
+    levers,
+    crumbles,
+    springs,
     doors,
     blocks,
     lasers,
@@ -234,6 +277,9 @@ export function parseLevel(def) {
     endings: def.endings ?? null,
     abilities: Object.freeze([...abilities]),
     teach: def.teach ?? null,
+    chapter: def.chapter ?? 1,
+    /** Dernier niveau d'un chapitre : la sortie mène au chapitre suivant. */
+    chapterEnd: !!def.chapterEnd,
     decor: def.decor ?? [],
   });
 }

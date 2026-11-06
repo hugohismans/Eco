@@ -379,14 +379,21 @@ export const DECOR = {
     const w = (d.cols ?? 4) * TILE + 16, h = (d.rows ?? 10) * TILE;
     const floor = LEVEL_Y + (d.floorRow ?? 12) * TILE;
     const ground = LEVEL_Y + (d.groundRow ?? 12) * TILE;
-    // Caisse : bleu, bandeaux crème, toit arrondi plus sombre.
-    rect(A, x0 + 2, y0 + 6, w, floor - y0 - 6, '#4a64ab');
-    rect(A, x0 + 6, y0, w - 6, 3, '#2b3f78');
-    rect(A, x0 + 3, y0 + 3, w - 1, 3, '#33498a');
-    rect(A, x0 + 2, y0 + 6, 1, floor - y0 - 6, '#2b3f78');
-    rect(A, x0 + 2, y0 + 22, w, 3, C.paper3);
-    rect(A, x0 + 2, floor - 14, w, 2, C.paper3);
-    for (let k = y0 + 28; k < floor - 16; k += 6) rect(A, x0 + 2, k, 1, 3, '#33498a');
+    // Caisse, selon la ligne : nuit (bleu), montagne (rouge), métro (vert), ancien (bois verni).
+    const TRAIN_COLORS = {
+      nuit: ['#4a64ab', '#2b3f78', '#33498a', C.paper3],
+      montagne: ['#a8443a', '#6e2a24', '#8a362e', C.paper3],
+      metro: ['#4f7a66', '#2e4a3e', '#3e6152', C.paper2],
+      ancien: ['#6b4024', '#3a2214', '#4a2c1a', C.brass],
+    };
+    const [body, roof, roof2, band] = TRAIN_COLORS[d.variant ?? 'nuit'] ?? TRAIN_COLORS.nuit;
+    rect(A, x0 + 2, y0 + 6, w, floor - y0 - 6, body);
+    rect(A, x0 + 6, y0, w - 6, 3, roof);
+    rect(A, x0 + 3, y0 + 3, w - 1, 3, roof2);
+    rect(A, x0 + 2, y0 + 6, 1, floor - y0 - 6, roof);
+    rect(A, x0 + 2, y0 + 22, w, 3, band);
+    rect(A, x0 + 2, floor - 14, w, 2, band);
+    for (let k = y0 + 28; k < floor - 16; k += 6) rect(A, x0 + 2, k, 1, 3, roof2);
     // Bandeau lumineux sous le toit.
     rect(Em, x0 + 4, y0 + 8, w - 4, 1, C.lamp2);
     // Vitres, sauf devant la porte.
@@ -425,6 +432,162 @@ export const DECOR = {
     out.lights.push({ x: x0 + 24, y: y0 + 10, r: 50, color: C.lamp2, intensity: 0.5, flicker: 0, shadows: false, halo: 0.3 });
   },
 };
+
+Object.assign(DECOR, {
+  // --- Chapitre 2 : la montagne ------------------------------------------------
+  /** Poêle à bois : fonte, porte vitrée rougeoyante, tuyau jusqu'au plafond. */
+  stove(d, level, A, Em, out) {
+    const x = cellX(d) + 2, fy = floorY(level, d.col, d.row);
+    const y = fy - 18;
+    rect(A, x, y, 12, 18, C.iron1);
+    rect(A, x - 1, y, 14, 2, C.iron2);
+    rect(A, x + 1, fy - 2, 2, 2, C.iron0);
+    rect(A, x + 9, fy - 2, 2, 2, C.iron0);
+    rect(Em, x + 3, y + 6, 6, 5, C.lamp0);
+    rect(Em, x + 4, y + 7, 4, 3, C.lamp2);
+    rect(A, x + 5, LEVEL_Y + (ceilingRowAbove(level, d.col, d.row) + 1) * TILE, 2, y - LEVEL_Y - (ceilingRowAbove(level, d.col, d.row) + 1) * TILE, C.iron1);
+    const seed = seedCounter++;
+    out.lights.push({ x: x + 6, y: y + 8, r: 70, color: C.lamp1, intensity: 0.9, flicker: seed, shadows: true, halo: 0.6 });
+  },
+
+  /** Sapin enneigé (dehors). `rows` : hauteur en cases. */
+  pine(d, level, A) {
+    const cx = cellX(d) + 8, fy = floorY(level, d.col, d.row);
+    const h = (d.rows ?? 3) * TILE;
+    rect(A, cx - 1, fy - 5, 3, 5, C.wood1);
+    for (let k = 0; k < h - 4; k++) {
+      const w = Math.round(((k % 9) / 9 + k / h) * 6) + 1;
+      rect(A, cx - w, fy - h + k, w * 2 + 1, 1, '#1f3a34');
+      if (k % 9 === 0) rect(A, cx - w, fy - h + k, w * 2 + 1, 1, C.moon1);
+    }
+  },
+
+  /** Paire de skis appuyée contre le mur. */
+  skis(d, level, A) {
+    const x = cellX(d) + 4, fy = floorY(level, d.col, d.row);
+    for (const [ox, col] of [[0, '#a8443a'], [4, '#2b4f9a']]) {
+      for (let k = 0; k < 30; k++) px(A, x + ox + Math.floor(k / 10), fy - 1 - k, col);
+      px(A, x + ox + 3, fy - 31, col);
+    }
+  },
+
+  // --- Chapitre 3 : la ville -------------------------------------------------------
+  /** Enseigne au néon : texte qui luit (rose, bleu, vert, ambre). */
+  neon(d, level, A, Em, out) {
+    const colors = { rose: '#ff6ab4', bleu: '#6ad2ff', vert: '#7dffb0', ambre: C.lamp2 };
+    const col = colors[d.color ?? 'rose'] ?? colors.rose;
+    const text = d.text ?? 'HOTEL';
+    const x = cellX(d), y = cellY(d);
+    const w = text.length * 8 + 6;
+    rect(A, x, y, w, 12, C.iron0);
+    rect(A, x + 1, y - 4, 1, 4, C.iron1);
+    rect(A, x + w - 2, y - 4, 1, 4, C.iron1);
+    Em.drawImage(textSprite(text, col, null), x + 3, y + 2);
+    out.lights.push({ x: x + w / 2, y: y + 6, r: 60, color: col, intensity: 0.55, flicker: d.flicker ? seedCounter++ : 0, shadows: false, halo: 0.6 });
+  },
+
+  /** Vitrine de boutique éclairée, avec son enseigne. */
+  shopfront(d, level, A, Em, out) {
+    const x = cellX(d), y = cellY(d);
+    const w = (d.cols ?? 3) * TILE, h = (d.rows ?? 2) * TILE;
+    rect(A, x - 2, y - 10, w + 4, h + 10, C.wood1);
+    rect(A, x - 2, y - 10, w + 4, 8, '#2e4a3e');
+    if (d.label) A.drawImage(textSprite(d.label.slice(0, Math.floor(w / 8)), C.paper3, null), x + 2, y - 10);
+    rect(A, x, y, w, h, C.ink);
+    rect(Em, x, y, w, h, '#5a3a28');
+    rect(Em, x + 2, y + 2, w - 4, h - 8, C.lamp0);
+    for (let k = x + 4; k < x + w - 6; k += 9) rect(Em, k, y + h - 12, 5, 6, C.lamp2);
+    rect(A, x + (w >> 1), y, 1, h, C.wood1);
+    out.lights.push({ x: x + w / 2, y: y + h / 2, r: 64, color: C.lamp1, intensity: 0.6, flicker: 0, shadows: false, halo: 0.4 });
+  },
+
+  /** Cheminée de toit en briques, avec son chapeau. */
+  chimney(d, level, A) {
+    const x = cellX(d) + 3, fy = floorY(level, d.col, d.row);
+    rect(A, x, fy - 20, 10, 20, C.brick2);
+    for (let y = fy - 20; y < fy; y += 4) rect(A, x, y + 3, 10, 1, C.brick1);
+    rect(A, x - 1, fy - 22, 12, 2, C.stone2);
+    rect(A, x + 2, fy - 26, 6, 4, C.iron1);
+  },
+
+  /** Antenne de télévision. */
+  antenna(d, level, A) {
+    const x = cellX(d) + 8, fy = floorY(level, d.col, d.row);
+    rect(A, x, fy - 30, 1, 30, C.iron1);
+    for (let k = 0; k < 3; k++) rect(A, x - 6 + k * 2, fy - 28 + k * 5, 13 - k * 4, 1, C.iron1);
+  },
+
+  // --- Chapitre 4 : le musée -------------------------------------------------------
+  /** Tableau accroché (décor) : cadre doré, toile sombre et colorée. */
+  painting(d, level, A, Em, out) {
+    const x = cellX(d), y = cellY(d);
+    const w = (d.cols ?? 2) * TILE - 4, h = (d.rows ?? 2) * TILE - 4;
+    rect(A, x, y, w, h, C.brass);
+    rect(A, x + 1, y + 1, w - 2, h - 2, C.wood1);
+    const v = (d.variant ?? 1) % 4;
+    const pal = [['#2b4f9a', '#c9b27a'], ['#6e2a24', '#e3cf98'], ['#2e4a3e', '#a6f0b6'], ['#3a2a40', '#ffadd6']][v];
+    rect(A, x + 3, y + 3, w - 6, h - 6, pal[0]);
+    if (v === 0) rect(A, x + 3, y + 3 + Math.floor((h - 6) * 0.6), w - 6, 2, pal[1]); // horizon
+    if (v === 1) { rect(A, x + (w >> 1) - 3, y + 6, 6, 8, pal[1]); rect(A, x + (w >> 1) - 5, y + 14, 10, h - 20, pal[1]); } // portrait
+    if (v === 2) for (let k = 0; k < 4; k++) rect(A, x + 5 + k * 5, y + h - 8 - k * 3, 3, 4 + k * 3, pal[1]); // nature morte
+    if (v === 3) for (let k = 0; k < 5; k++) px(A, x + 5 + ((k * 7) % (w - 10)), y + 5 + ((k * 5) % (h - 10)), pal[1]); // étoiles
+    out.lights.push({ x: x + w / 2, y: y - 4, r: 30, color: C.lamp3, intensity: 0.35, flicker: 0, shadows: false, halo: 0 });
+    rect(Em, x + 2, y - 3, w - 4, 1, C.lamp0); // petite rampe éclairante
+  },
+
+  /** Statue sur son socle. */
+  statue(d, level, A) {
+    const x = cellX(d) + 2, fy = floorY(level, d.col, d.row);
+    rect(A, x - 2, fy - 8, 16, 8, '#9c948a');
+    rect(A, x - 2, fy - 8, 16, 1, '#c4bcb0');
+    const top = fy - 30;
+    rect(A, x + 4, top, 4, 5, '#b8b0a4');
+    rect(A, x + 2, top + 5, 8, 12, '#b8b0a4');
+    rect(A, x + 3, top + 17, 2, 5, '#b8b0a4');
+    rect(A, x + 7, top + 17, 2, 5, '#b8b0a4');
+    rect(A, x + 10, top + 6, 2, 7, '#a49c92');
+  },
+
+  /** Verrière : la lumière de la lune tombe du plafond. */
+  skylight(d, level, A, Em, out) {
+    const x = cellX(d), y = cellY(d);
+    const w = (d.cols ?? 3) * TILE;
+    const fy = floorY(level, d.col, d.row + 1);
+    rect(Em, x, y, w, 3, C.night4);
+    for (let k = x; k < x + w; k += 8) rect(Em, k, y, 1, 3, '#000');
+    out.volumes.push({ type: 'shaft', x0: x, x1: x + w, y0: y + 3, y1: fy, slant: d.slant ?? 0.1, color: C.moon1, alpha: 0.12, dust: 8 });
+    out.lights.push({ x: x + w / 2, y: fy - 10, r: 50, color: C.moon0, intensity: 0.35, flicker: 0, shadows: false, halo: 0 });
+  },
+
+  /** Cordon de velours entre deux poteaux. */
+  rope(d, level, A) {
+    const x = cellX(d), fy = floorY(level, d.col, d.row);
+    const w = (d.cols ?? 2) * TILE;
+    for (const px0 of [x + 2, x + w - 4]) { rect(A, px0, fy - 12, 2, 12, C.brass); rect(A, px0 - 1, fy - 1, 4, 1, C.brass); }
+    for (let k = 0; k < w - 6; k++) px(A, x + 3 + k, fy - 10 + Math.round(Math.sin((k / (w - 6)) * Math.PI) * 3), '#a8443a');
+  },
+
+  /** Locomotive à vapeur exposée (devant les murs : `"layer": "front"`). */
+  locomotive(d, level, A, Em, out) {
+    const x0 = cellX(d), fy = floorY(level, d.col, d.row);
+    const w = (d.cols ?? 8) * TILE;
+    // Chaudière, cabine, cheminée, roues.
+    rect(A, x0 + 10, fy - 40, w - 50, 22, '#1e2430');
+    rect(A, x0 + 10, fy - 40, w - 50, 2, '#3a4258');
+    for (let k = x0 + 18; k < x0 + w - 44; k += 16) rect(A, k, fy - 40, 2, 22, C.brass);
+    rect(A, x0 + w - 40, fy - 58, 38, 40, '#2a2030');
+    rect(A, x0 + w - 36, fy - 54, 14, 12, C.ink);
+    rect(Em, x0 + w - 35, fy - 53, 12, 10, C.lamp1);
+    rect(A, x0 + 16, fy - 56, 8, 16, '#1e2430');
+    rect(A, x0 + 14, fy - 58, 12, 3, '#3a4258');
+    rect(Em, x0 + 4, fy - 34, 6, 6, C.lamp3);
+    out.lights.push({ x: x0 + 7, y: fy - 31, r: 60, color: C.lamp2, intensity: 0.6, flicker: 0, shadows: false, halo: 0.8 });
+    for (const wx of [x0 + 24, x0 + 48, x0 + 72]) {
+      for (let yy = -9; yy <= 9; yy++) for (let xx = -9; xx <= 9; xx++) if (xx * xx + yy * yy <= 81) px(A, wx + xx, fy - 10 + yy, xx * xx + yy * yy > 60 ? '#6e2a24' : '#1e2430');
+    }
+    rect(A, x0 + 20, fy - 11, 60, 2, C.stone3);
+  },
+});
 
 /**
  * Peint les éléments de décor d'un niveau. `layer` : 'back' (derrière les murs,

@@ -20,14 +20,23 @@ import {
   CLIMB_UP, CLIMB_DOWN, STAMINA_MAX, STAMINA_STILL, STAMINA_UP, STAMINA_CLIMBJUMP,
   GRAB_LOCK, LEDGE_HOP_VY, LEDGE_HOP_VX,
   DASH_SPEED, DASH_DIAG, DASH_TICKS, DASH_END_VY_UP, DASH_END_MAX_VX, CORNER_NUDGE,
+  ICE_ACCEL, SPRING_VEL,
 } from './constants.js';
 import { moveAxis, approach } from './physics.js';
 
 /** Obstacle immobile (case de mur, plateforme fine) : sert de « sol » sans déplacement. */
 export const STATIC_GROUND = Object.freeze({ kind: 'static', dx: 0, dy: 0 });
+/** Sol de glace : immobile, mais on y glisse. */
+export const ICE_GROUND = Object.freeze({ kind: 'static', dx: 0, dy: 0, ice: true });
+
+/** Ce sur quoi l'on se tient, d'après l'obstacle rencontré sous les pieds. */
+export function groundOf(hit) {
+  if (typeof hit.dx === 'number') return hit; // écho, plateforme, valise, tapis…
+  return hit.ice ? ICE_GROUND : STATIC_GROUND;
+}
 
 /** Ce à quoi l'on peut s'agripper ou d'où l'on peut sauter. */
-const WALL_KINDS = new Set(['tile', 'door', 'platform']);
+const WALL_KINDS = new Set(['tile', 'door', 'platform', 'crumble']);
 
 /**
  * Crée un acteur.
@@ -103,10 +112,10 @@ export function actorInput(actor, tick, playerInput) {
   return 0;
 }
 
-/** Y a-t-il un mur où s'accrocher du côté `side` (-1 ou 1) ? */
-function wallAt(world, a, side) {
+/** Y a-t-il un mur du côté `side` (-1 ou 1) ? Pour s'agripper, pas de glace. */
+function wallAt(world, a, side, forGrab = false) {
   const hit = world.blockerFor(a, 'x', side * WALL_PROBE);
-  return !!hit && WALL_KINDS.has(hit.kind);
+  return !!hit && WALL_KINDS.has(hit.kind) && !(forGrab && hit.ice);
 }
 
 /**
@@ -177,7 +186,7 @@ export function stepActor(world, a, bits) {
 
   // 3. Murs : où sont-ils, s'accroche-t-on ?
   a.wallDir = wallAt(world, a, a.facing) ? a.facing : wallAt(world, a, -a.facing) ? -a.facing : 0;
-  const grabSide = wallAt(world, a, a.facing) ? a.facing : 0;
+  const grabSide = wallAt(world, a, a.facing, true) ? a.facing : 0;
   if (can.has('grab') && grab && grabSide !== 0 && a.stamina > 0 && a.grabLock === 0) {
     if (!a.climbing) world.emit('grab', a);
     a.climbing = true;
@@ -198,6 +207,8 @@ export function stepActor(world, a, bits) {
     : (moveDir !== 0 ? AIR_ACCEL : AIR_DECEL);
   // L'élan d'un dash ou d'un saut au mur s'éteint doucement.
   if (Math.abs(a.vx) > RUN_SPEED && Math.sign(a.vx) === moveDir) accel = 1;
+  // Sur la glace, on démarre et on s'arrête à peine.
+  if (a.onGround && a.ground?.ice) accel = ICE_ACCEL;
   a.vx = approach(a.vx, moveDir * RUN_SPEED, accel);
   if (moveDir !== 0) a.facing = moveDir;
 
@@ -377,7 +388,7 @@ function moveVertical(world, a) {
     const under = world.blockerFor(a, 'y', 1);
     if (under) {
       a.onGround = true;
-      a.ground = typeof under.dx === 'number' ? under : STATIC_GROUND;
+      a.ground = groundOf(under);
     } else {
       a.onGround = false;
       a.ground = null;
@@ -398,11 +409,23 @@ function moveVertical(world, a) {
   if (hitY) a.vy = 0;
 }
 
+export function bounce(world, a, spring) {
+  a.vy = -SPRING_VEL;
+  a.onGround = false;
+  a.ground = null;
+  a.coyote = 0;
+  a.jumpHeld = false;
+  a.climbing = false;
+  if (world.abilities.has('dash')) a.dashes = 1;
+  spring.squash = 8;
+  world.emit('spring', a);
+}
+
 function land(world, a, hit) {
   const wasGround = a.onGround;
   a.onGround = true;
-  // Tout ce qui se déplace (écho, plateforme, valise) expose dx/dy.
-  a.ground = typeof hit.dx === 'number' ? hit : STATIC_GROUND;
+  // Tout ce qui se déplace (écho, plateforme, valise, tapis) expose dx/dy.
+  a.ground = groundOf(hit);
   a.climbing = false;
   if (!wasGround) world.emit('land', a);
 }

@@ -1,14 +1,13 @@
 {
   "id": "train",
-  "name": "Le dernier train",
+  "name": "Le train de nuit",
   "theme": "train",
-  "narration": "Le dernier train. Cette fois, il attend. (provisoire)",
+  "narration": "Le train de nuit. Cette fois, il attend. (provisoire)",
   "duration": null,
   "doors": {"1": {"buttons": ["a"], "mode": "or"}},
   "platforms": [{"col": 16, "row": 12, "cols": 1, "to": {"col": 16, "row": 8}, "buttons": ["b"], "mode": "or", "behavior": "loop"}],
-  "stay": {"col": 9, "row": 11, "cols": 2},
   "exitStyle": "train",
-  "endings": {"exit": "Cette fois, je monte. (provisoire)", "stay": "Je reste. Le quai est doux, la nuit. (provisoire)"},
+  "chapterEnd": true,
   "grid": [
     "............................",
     "............................",

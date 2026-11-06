@@ -4,7 +4,7 @@
 
 import { GRAVITY, MAX_FALL, PLATFORM_WAIT } from './constants.js';
 import { moveAxis, overlaps } from './physics.js';
-import { STATIC_GROUND } from './actor.js';
+import { groundOf } from './actor.js';
 
 // --- Valises -----------------------------------------------------------------
 
@@ -43,7 +43,7 @@ export function stepBlock(world, b) {
   const hit = moveAxis(world, b, 'y', b.vy);
   if (hit && b.vy > 0) {
     b.onGround = true;
-    b.ground = typeof hit.dx === 'number' ? hit : STATIC_GROUND;
+    b.ground = groundOf(hit);
     if (!wasGround) world.emit('block-land', b);
   } else {
     b.onGround = false;

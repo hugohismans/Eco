@@ -74,7 +74,8 @@ export function drawHud(ctx, session, ui) {
   if (t < NAME_TICKS) {
     const a = Math.min(1, t / 20, (NAME_TICKS - t) / 30);
     ctx.globalAlpha = Math.max(0, a);
-    const name = session.level.name.toUpperCase();
+    const lv = session.level;
+    const name = (lv.label ? `${lv.label}  ` : '') + lv.name.toUpperCase();
     const s = textSprite(name, C.lamp3);
     ctx.drawImage(s, Math.round((VIEW_W - s.width) / 2), 24);
     ctx.globalAlpha = 1;

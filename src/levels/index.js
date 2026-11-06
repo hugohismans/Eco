@@ -1,14 +1,15 @@
-// Liste ordonnée des niveaux. Pour en ajouter un : créer le fichier JSON
-// (format décrit dans src/sim/level.js) et l'importer ici.
-import quai from './01-quai.json';
-import hall from './02-hall.json';
-import guichets from './03-guichets.json';
-import attente from './04-attente.json';
-import souterrain from './05-souterrain.json';
-import voie from './06-voie.json';
-import escalier from './07-escalier.json';
-import chateau from './08-chateau.json';
-import depot from './09-depot.json';
-import train from './10-train.json';
+// Les niveaux : tous les fichiers JSON de ce dossier, dans l'ordre de leur nom
+// (01-quai.json, 02-hall.json…). Pour en ajouter un, il suffit de créer le
+// fichier (format décrit dans src/sim/level.js), avec son champ "chapter".
 
-export const LEVELS = [quai, hall, guichets, attente, souterrain, voie, escalier, chateau, depot, train];
+const files = import.meta.glob('./*.json', { eager: true, import: 'default' });
+
+export const LEVELS = Object.keys(files).sort().map((k) => files[k]);
+
+/** Les chapitres : un lieu, une ambiance. */
+export const CHAPTERS = {
+  1: { title: 'La gare, la nuit' },
+  2: { title: 'La gare d’altitude' },
+  3: { title: 'La ville' },
+  4: { title: 'Le musée' },
+};
