@@ -87,6 +87,10 @@ export function drawElements(P, E, world, lights, t) {
     }
     const shake = c.state === 'shaking' ? Math.round(Math.sin(t * 60) * (1 + (CRUMBLE_TICKS - c.timer) / 12)) : 0;
     const x = c.x / SUB + shake, y = c.y / SUB + LEVEL_Y, w = c.w / SUB;
+    E.save();
+    E.globalCompositeOperation = 'destination-out';
+    rect(E, x, y, w, 16, '#000');
+    E.restore();
     rect(P, x, y, w, 5, C.wood3);
     rect(P, x, y, w, 1, C.wood4);
     rect(P, x, y + 5, w, 1, C.wood1);

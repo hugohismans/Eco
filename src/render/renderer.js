@@ -112,7 +112,7 @@ export class Renderer {
     drawElements(P, E, world, lights, t);
 
     const occluders = [];
-    for (const b of world.blocks) this.drawBlock(P, b, alpha, occluders);
+    for (const b of world.blocks) this.drawBlock(P, E, b, alpha, occluders);
     this.drawLasers(P, E, world, lights, volumes, t);
     this.drawActors(P, E, world, alpha, lights, occluders, t);
     this.drawStayHint(E, world, t);
@@ -269,6 +269,11 @@ export class Renderer {
     }
     P.drawImage(sprite(frame, p.facing, C.silhouette), sx, sy);
     this.drawScarf(P, p, x, y, C.silhouette, 1, t);
+    // La silhouette est opaque : elle cache les fenêtres et les lumières du décor derrière elle.
+    occlude(E, () => {
+      E.drawImage(sprite(frame, p.facing, '#000'), sx, sy);
+      this.drawScarf(E, p, x, y, '#000', 1, t);
+    });
     // L'écharpe s'allume quand un dash est disponible.
     if (world.abilities.has('dash')) {
       this.drawScarf(E, p, x, y, p.dashes > 0 ? C.lamp2 : C.night4, p.dashes > 0 ? 0.9 : 0.35, t);
@@ -339,6 +344,10 @@ export class Renderer {
     P.globalAlpha = Math.max(0, 1 - k * 1.6);
     P.drawImage(sprite(frame, p.facing, C.silhouette), sx, sy);
     P.globalAlpha = 1;
+    occlude(E, () => {
+      E.globalAlpha = Math.max(0, 1 - k * 1.6);
+      E.drawImage(sprite(frame, p.facing, '#000'), sx, sy);
+    });
     E.globalAlpha = Math.max(0, 0.9 - k);
     E.drawImage(rimSprite(frame, p.facing, 1, C.signalRed), sx, sy);
     for (let i = 0; i < 26; i++) {
@@ -357,10 +366,11 @@ export class Renderer {
   }
 
   /** Valise de cuir (sangles, coins de laiton) ou caisse de bois. */
-  drawBlock(P, b, alpha, occluders) {
+  drawBlock(P, E, b, alpha, occluders) {
     const x = Math.round((b.prevX + (b.x - b.prevX) * alpha) / SUB);
     const y = Math.round((b.prevY + (b.y - b.prevY) * alpha) / SUB) + LEVEL_Y;
     const w = b.w / SUB, h = b.h / SUB;
+    occlude(E, () => rect(E, x, y - 2, w, h + 2, '#000'));
     if (b.onGround) rect(P, x - 1, y + h, w + 2, 1, 'rgba(5,6,15,0.5)');
     if (b.type === 'caisse') {
       rect(P, x, y, w, h, C.wood2);
@@ -408,6 +418,7 @@ export class Renderer {
       rect(P, x + (w >> 1), top + 4, 1, y - top - 4, C.iron0);
     }
     rect(P, x, y, w, h, C.iron2);
+    occlude(E, () => rect(E, x, y, w, h, '#000'));
     for (let k = 0; k < w; k += 4) {
       rect(P, x + k, y, 2, 2, C.lamp1);
       rect(P, x + k + 2, y, 2, 2, C.ink);
@@ -534,6 +545,7 @@ export class Renderer {
       P.clip();
       const py = y - hidden;
       rect(P, x + 1, py, w - 2, h, C.iron2);
+      occlude(E, () => rect(E, x, y, w, h - hidden, '#000'));
       for (let k = 0; k < h; k += 3) {
         rect(P, x + 1, py + k, w - 2, 1, C.stone3);
         rect(P, x + 1, py + k + 2, w - 2, 1, C.iron1);
@@ -617,6 +629,17 @@ export class Renderer {
     }
     E.globalAlpha = 1;
   }
+}
+
+/**
+ * Efface l'émissif sous un objet opaque (silhouette, valise, porte…) : les
+ * fenêtres allumées et les étoiles du décor ne passent pas à travers lui.
+ */
+export function occlude(E, draw) {
+  E.save();
+  E.globalCompositeOperation = 'destination-out';
+  draw();
+  E.restore();
 }
 
 /** Position interpolée, en pixels (coin haut-gauche de la boîte). */
