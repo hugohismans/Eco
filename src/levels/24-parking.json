@@ -6,7 +6,11 @@
   "narration": "Les caméras se souviennent de chacun de nos passages. (provisoire)",
   "duration": 10,
   "abilities": ["walljump", "grab", "dash"],
-  "doors": {"1": {"buttons": ["s"]}, "2": {"buttons": ["x"], "invert": true}, "3": {"buttons": ["b"], "invert": true}},
+  "doors": {
+    "1": {"buttons": ["s"]},
+    "2": {"buttons": ["x"], "invert": true},
+    "3": {"buttons": ["b"], "invert": true}
+  },
   "lasers": [
     {"col": 11, "row": 2, "sensor": "x", "latch": true},
     {"col": 15, "row": 2, "sensor": "s"}

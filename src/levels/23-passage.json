@@ -3,7 +3,7 @@
   "name": "Le passage couvert",
   "theme": "rue",
   "chapter": 3,
-  "narration": "Le tapis rend tout ce qu'on lui confie, sauf si l'on insiste. (provisoire)",
+  "narration": "On a beau pousser, tout finit par revenir. (provisoire)",
   "duration": 9,
   "abilities": ["walljump", "grab", "dash"],
   "doors": {"1": {"buttons": ["a"]}},

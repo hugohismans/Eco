@@ -1,0 +1,37 @@
+{
+  "id": "tramway",
+  "name": "Le tramway",
+  "theme": "rue",
+  "chapter": 3,
+  "narration": "On voyage mieux dans l'ombre de quelqu'un. (provisoire)",
+  "duration": 9,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {"1": {"buttons": ["s"]}},
+  "lasers": [{"col": 3, "row": 1, "sensor": "s"}],
+  "platforms": [{"col": 3, "row": 8, "cols": 3, "to": {"col": 18, "row": 8}, "buttons": ["c"], "invert": true, "behavior": "loop", "speed": 10}],
+  "grid": [
+    "c###########################",
+    "###v########################",
+    "........................#...",
+    "........................1...",
+    "........................1.E.",
+    ".P......................1.E.",
+    "###..................#######",
+    "###..................<######",
+    "###..................#######",
+    "###..................#######",
+    "###..................#######",
+    "###..................#######",
+    "##>..................<######",
+    "############################"
+  ],
+  "decor": [
+    {"type": "sign", "col": 0, "row": 2, "text": "TRAM 3"},
+    {"type": "lamp", "col": 2, "row": 5},
+    {"type": "pendant", "col": 8, "row": 2, "cable": 8},
+    {"type": "pendant", "col": 15, "row": 2, "cable": 8},
+    {"type": "neon", "col": 11, "row": 3, "text": "CINEMA", "color": "rose"},
+    {"type": "shopfront", "col": 21, "row": 2, "cols": 3, "rows": 4, "label": "TABAC"},
+    {"type": "clock", "col": 26, "row": 2}
+  ]
+}

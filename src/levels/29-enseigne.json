@@ -1,0 +1,38 @@
+{
+  "id": "enseigne",
+  "name": "L'enseigne",
+  "theme": "ville",
+  "chapter": 3,
+  "narration": "Il faut être plusieurs pour toucher la lumière. (provisoire)",
+  "duration": 10,
+  "abilities": ["walljump", "grab", "dash"],
+  "lasers": [
+    {"col": 21, "row": 0, "sensor": "x", "latch": true},
+    {"col": 1, "row": 8, "buttons": ["x"]},
+    {"col": 1, "row": 9, "buttons": ["x"]}
+  ],
+  "grid": [
+    "#####################v######",
+    "##..........................",
+    "##........................E.",
+    "##........................E.",
+    "##......................####",
+    "##......................####",
+    "##......................####",
+    "##......................####",
+    "#>......................####",
+    "#>......................####",
+    "##......................####",
+    "##..P...................####",
+    "############################",
+    "############################"
+  ],
+  "decor": [
+    {"type": "neon", "col": 24, "row": 1, "text": "HOTEL", "color": "rose"},
+    {"type": "antenna", "col": 27, "row": 3},
+    {"type": "chimney", "col": 3, "row": 11},
+    {"type": "sign", "col": 7, "row": 5, "text": "ICI"},
+    {"type": "walllamp", "col": 13, "row": 4},
+    {"type": "walllamp", "col": 19, "row": 4}
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "id": "metro",
+  "name": "Le dernier métro",
+  "theme": "rue",
+  "chapter": 3,
+  "narration": "Le dernier métro attend que nous soyons tous là. (provisoire)",
+  "duration": null,
+  "abilities": ["walljump", "grab", "dash"],
+  "exitStyle": "train",
+  "chapterEnd": true,
+  "doors": {
+    "1": {"buttons": ["b", "c"]},
+    "2": {"buttons": ["x"], "invert": true},
+    "3": {"buttons": ["a"], "invert": true}
+  },
+  "lasers": [{"col": 20, "row": 0, "sensor": "x", "latch": true}],
+  "grid": [
+    "#########v##########v#######",
+    "#.............#.....3.##....",
+    "#............b#.......##....",
+    "#.....}}}}}}}}#.......##....",
+    "#.....................21....",
+    "#...##................21..E.",
+    "#..............a......21..E.",
+    "###.........################",
+    "#..P..........~#############",
+    "#####%%%%%%%%%~#############",
+    "####~.........~#############",
+    "####~....c....~#############",
+    "####>...##....<#############",
+    "############################"
+  ],
+  "decor": [
+    {"type": "train", "col": 23, "row": 2, "cols": 5, "floorRow": 7, "groundRow": 13, "variant": "metro", "layer": "front"},
+    {"type": "sign", "col": 16, "row": 3, "text": "METRO"},
+    {"type": "clock", "col": 18, "row": 4},
+    {"type": "poster", "col": 10, "row": 5, "cols": 2, "rows": 2, "variant": "texte"},
+    {"type": "bench", "col": 17, "row": 6},
+    {"type": "pendant", "col": 3, "row": 1, "cable": 2},
+    {"type": "neon", "col": 6, "row": 6, "text": "SORTIE", "color": "bleu"}
+  ]
+}

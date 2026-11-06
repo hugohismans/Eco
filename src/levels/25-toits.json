@@ -3,7 +3,7 @@
   "name": "Les toits",
   "theme": "ville",
   "chapter": 3,
-  "narration": "Sur les toits, chaque cheminée ne sert qu'une fois. (provisoire)",
+  "narration": "Sur les toits, on ne passe jamais deux fois au même endroit. (provisoire)",
   "duration": 8,
   "abilities": ["walljump", "grab", "dash"],
   "doors": {"1": {"buttons": ["a"]}},

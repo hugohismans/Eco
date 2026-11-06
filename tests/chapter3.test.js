@@ -45,6 +45,7 @@ class Bot {
   step(bits) {
     if (this.s.state !== 'playing') return false;
     this.s.step(bits);
+    if (this.s.world.player.dead) this.died = true;
     return this.s.state === 'playing';
   }
   idle(n) { for (let i = 0; i < n; i++) if (!this.step(0)) return; }
@@ -500,11 +501,13 @@ test('25 toits : passer devant l’écho fait tomber ses cheminées… et l’é
   bot.holdUntil(R, () => bot.cx > 4 * TILE + 12);
   bot.leap({ dir: R, until: () => bot.p.onGround || bot.p.dead });
   hops(bot, [7, 10, 13, 16]);
+  assert.equal(bot.feet, rowTop(9), 'nous sommes passés, nous');
   let opened = false;
   bot.holdUntil(R, () => {
     if (s.world.doors[0].open > 0) opened = true;
     return s.attempt !== 2 || s.state !== 'playing';
   }, 900);
+  assert.ok(!bot.died);
   assert.equal(opened, false, 'privé de ses cheminées, l’écho n’atteint jamais le bouton');
   assert.equal(s.outcome, null);
 });
@@ -525,7 +528,7 @@ const button = (s, id) => s.world.buttons.find((b) => b.id === id);
 
 /** Monter sur la marche, puis sauter sur l'étal fragile. */
 function jumpOnStall(bot) {
-  bot.walkTo(colCenter(6));
+  bot.walkTo(colCenter(5));
   bot.jump(1);
   bot.walkTo(colCenter(7));
   bot.jump(1);
@@ -560,7 +563,7 @@ test('26 marché : un écho immobile sur le tapis traverse le faisceau ; un autr
   assert.equal(s.world.doors[0].target, true, 'a ET b : la porte s’ouvre');
   bot.untilAttemptEnds();
   // Tentative 3 : attendre devant la porte, passer pendant que l'étal tient.
-  bot.walkTo(colCenter(6));
+  bot.walkTo(colCenter(5));
   bot.jump(1);
   bot.walkTo(colCenter(21));
   bot.holdUntil(0, () => s.world.doors[0].open >= 8, 600);
@@ -590,7 +593,7 @@ test('26 marché : l’étal ne tient qu’un instant (trop tôt, trop loin)', (
   assert.equal(button(s, 'a').pressed, false, 'l’étal a cédé');
   bot.untilAttemptEnds();
   let opened = false;
-  bot.walkTo(colCenter(6));
+  bot.walkTo(colCenter(5));
   bot.jump(1);
   bot.walkTo(colCenter(21));
   bot.holdUntil(0, () => { opened ||= s.world.doors[0].open > 0; return s.attempt !== 3; }, 700);
@@ -607,4 +610,388 @@ test('26 marché : l’étal ne tient qu’un instant (trop tôt, trop loin)', (
   for (let i = 0; i < 120 && s2.attempt === 2; i++) b2.step(i % 11 === 0 ? R | X : R);
   assert.equal(s2.outcome, null);
   assert.equal(s2.world.doors[0].open, 0);
+});
+
+// --- 27. Le tramway ---------------------------------------------------------------------
+
+const tram = (s) => s.world.platforms[0];
+const barrier = (s) => s.world.lasers.find((l) => l.sensor === 's');
+
+/** Écho « bouclier » : sauter vers la rame, dash, et « Rejouer » en plein vol (avant le faisceau). */
+function throwShieldOnTram(s, bot) {
+  bot.walkTo(40);
+  for (let k = 0; k < 80; k++) {
+    bot.step(R | (k < 18 ? J : 0) | (k === 18 ? X | R : 0));
+    if (k > 5 && bot.feet >= 108 * SUB) break;
+  }
+  assert.equal(bot.p.dead, false);
+  s.replay();
+}
+/** Écho « barrière » : se laisser tomber du quai, « Rejouer » avant le faisceau. */
+function dropIntoBarrier(s, bot) {
+  bot.idle(2);
+  bot.holdUntil(R, () => !bot.p.onGround, 100);
+  bot.holdUntil(0, () => bot.feet >= 110 * SUB, 30);
+  assert.equal(bot.p.dead, false);
+  s.replay();
+}
+/** Le joueur : monter dans la rame derrière l'écho bouclier. */
+function boardBehindShield(s, bot) {
+  bot.walkTo(40);
+  bot.holdUntil(0, () => s.world.actors[0].ground === tram(s), 200);
+  bot.idle(20);
+  bot.leap({ dir: R, dd: R, da: 18 });
+}
+
+test('27 tramway : un écho lancé sur la rame nous abrite ; un autre tient la barrière', () => {
+  const s = new Session(load('27-tramway.json'));
+  const bot = new Bot(s);
+  throwShieldOnTram(s, bot);
+  dropIntoBarrier(s, bot);
+  const [shield, holder] = s.world.actors;
+  boardBehindShield(s, bot);
+  assert.equal(bot.p.ground, tram(s), 'dans la rame');
+  assert.equal(shield.ground, tram(s), 'l’écho bouclier est dans la rame');
+  assert.ok(bot.p.x < shield.x, 'derrière lui');
+  assert.equal(holder.y + holder.h, rowTop(13), 'l’autre écho est au fond, sans dommage');
+  assert.equal(barrier(s).pressed, true, 'et il coupe la barrière');
+  let hitShield = false;
+  bot.holdUntil(0, () => {
+    hitShield ||= s.world.lasers.find((l) => !l.sensor && l.row === 7).hit === shield;
+    return tram(s).x >= 280 * SUB || bot.p.dead;
+  }, 500);
+  assert.equal(bot.p.dead, false);
+  assert.equal(hitShield, true, 'le faisceau s’arrête sur l’écho');
+  // Arrivée : sauter (d'abord vers le haut, hors du faisceau), dash vers le quai.
+  bot.leap({ dir: 0, after: R, afterAt: 4, dd: R, da: 11 });
+  assert.equal(bot.feet, rowTop(6), 'sur le quai d’en face');
+  bot.holdUntil(R, () => s.state !== 'playing' || bot.p.dead, 300);
+  assert.equal(s.outcome, 'exit');
+});
+
+test('27 tramway : seul dans la rame, le faisceau nous fauche', () => {
+  const s = new Session(load('27-tramway.json'));
+  const bot = new Bot(s);
+  bot.walkTo(40);
+  bot.idle(30);
+  bot.leap({ dir: R, dd: R, da: 18, until: () => bot.p.dead || bot.p.onGround });
+  bot.idle(5);
+  assert.equal(bot.p.dead, true);
+});
+
+test('27 tramway : la rame ne coupe la barrière qu’au départ ; sans l’écho, la porte est close', () => {
+  const s = new Session(load('27-tramway.json'));
+  const bot = new Bot(s);
+  bot.idle(3);
+  assert.equal(barrier(s).pressed, true, 'la rame à quai coupe la barrière');
+  bot.idle(30);
+  assert.equal(barrier(s).pressed, false, 'elle est partie');
+  // Avec seulement l'écho bouclier : on arrive en face, porte fermée.
+  const s2 = new Session(load('27-tramway.json'));
+  const b2 = new Bot(s2);
+  b2.idle(1);
+  throwShieldOnTram(s2, b2);
+  boardBehindShield(s2, b2);
+  let opened = false;
+  b2.holdUntil(0, () => {
+    if (b2.cx > 18 * TILE) opened ||= s2.world.doors[0].open > 0;
+    return s2.attempt !== 2 || b2.p.dead;
+  }, 600);
+  assert.equal(opened, false, 'la porte ne s’ouvre pas quand on est en face');
+  assert.equal(s2.outcome, null);
+});
+
+// --- 28. Le chantier ----------------------------------------------------------------------
+
+/** Remonte une cheminée étroite en sautant d'un mur à l'autre (sans s'agripper). */
+function wallClimb(bot, done, max = 600) {
+  const s = bot.s;
+  let toward = L;
+  for (let i = 0; i < max && s.state === 'playing'; i++) {
+    const p = bot.p;
+    if (done()) return true;
+    if (p.onGround) {
+      bot.step(toward);
+      bot.step(toward | J);
+      continue;
+    }
+    if (p.wallDir !== 0 && p.vy > -30) {
+      bot.step(p.wallDir > 0 ? R : L);
+      toward = p.wallDir > 0 ? L : R;
+      for (let k = 0; k < 7; k++) bot.step(toward | J);
+    } else {
+      bot.step(toward | (p.vy < 0 ? J : 0));
+    }
+  }
+  return done();
+}
+const wallCells = (s) => s.world.crumbles.filter((c) => c.col === 8);
+const scaffold = (s, col) => s.world.crumbles.filter((c) => c.col === col);
+/** Par la cheminée (sauts de mur à mur, sans toucher l'échafaudage), jusqu'au chapeau du bouton c. */
+function chimneyToCap(bot) {
+  bot.walkTo(colCenter(10));
+  assert.equal(wallClimb(bot, () => bot.p.onGround && bot.feet === rowTop(4)), true, 'sur le chapeau');
+}
+/** Écho « mur » : du chapeau, dash vers le mur fragile, s'y agripper jusqu'à ce qu'il cède, entrer, tenir b. */
+function breakWallAndHoldB(bot) {
+  chimneyToCap(bot);
+  bot.walkTo(colCenter(11) - 2);
+  bot.step(L | X);
+  bot.holdUntil(L | G, () => bot.p.climbing, 30);
+  assert.equal(bot.p.climbing, true, 'agrippé au mur fragile');
+  bot.holdUntil(L | G, () => wallCells(bot.s).filter((c) => c.row >= 2).every((c) => c.state === 'gone'), 120);
+  bot.holdUntil(L, () => bot.p.onGround, 60);
+  bot.walkTo(colCenter(2));
+}
+/** Le joueur : escalader l'échafaudage de droite, jusqu'à son chapeau. */
+function climbRightScaffold(bot) {
+  bot.walkTo(colCenter(18));
+  const c = climber(bot);
+  c.toWall();
+  c.jumpGrab();
+  c.climbJump();
+  bot.holdUntil(R | G | U, () => bot.p.onGround || bot.p.dead, 300);
+}
+
+test('28 chantier : un écho tient c, un autre fait tomber le mur fragile et tient b ; on grimpe', () => {
+  const s = new Session(load('28-chantier.json'));
+  const bot = new Bot(s);
+  // Écho 1 : la cheminée, sans s'agripper à l'échafaudage, puis le bouton c sur le chapeau.
+  chimneyToCap(bot);
+  assert.equal(button(s, 'c').pressed, true);
+  assert.ok(scaffold(s, 11).every((c) => c.state === 'intact'), 'échafaudage intact');
+  bot.untilAttemptEnds();
+  // Écho 2 : même cheminée, puis le mur fragile, puis b.
+  breakWallAndHoldB(bot);
+  assert.equal(button(s, 'b').pressed, true, 'b, derrière le mur tombé');
+  bot.untilAttemptEnds();
+  // Tentative 3 : grimper l'échafaudage de droite (il cède derrière nous), passer la porte.
+  climbRightScaffold(bot);
+  assert.equal(bot.feet, rowTop(4), 'sur le chapeau de droite');
+  assert.ok(scaffold(s, 20).some((c) => c.state !== 'intact'), 'l’échafaudage cède sous nos mains');
+  bot.holdUntil(0, () => s.world.doors[0].open >= 12, 400);
+  bot.holdUntil(R, () => s.state !== 'playing', 300);
+  assert.equal(s.outcome, 'exit');
+});
+
+test('28 chantier : un écho qui escalade l’échafaudage détruit nos prises', () => {
+  // Un écho grimpe l'échafaudage de droite, prise après prise : derrière lui, plus rien à saisir.
+  const s = new Session(load('28-chantier.json'));
+  const bot = new Bot(s);
+  bot.walkTo(colCenter(18));
+  const c = climber(bot);
+  c.toWall();
+  c.jumpGrab();
+  bot.holdUntil(R | G | U, () => bot.p.onGround || bot.p.dead, 300);
+  assert.equal(bot.feet, rowTop(4), 'l’écho est monté');
+  bot.untilAttemptEnds();
+  bot.idle(200);
+  assert.ok(scaffold(s, 20).filter((cell) => cell.state === 'gone').length >= 4, 'l’écho l’a fait tomber');
+  climbRightScaffold(bot);
+  assert.notEqual(bot.feet, rowTop(4), 'plus moyen d’atteindre le chapeau');
+});
+
+test('28 chantier : un seul écho ne suffit pas (b et c)', () => {
+  const s = new Session(load('28-chantier.json'));
+  const bot = new Bot(s);
+  breakWallAndHoldB(bot);
+  bot.untilAttemptEnds();
+  climbRightScaffold(bot);
+  bot.holdUntil(R, () => s.attempt !== 2 || s.state !== 'playing', 600);
+  assert.equal(s.outcome, null, 'c n’est pas tenu');
+});
+
+// --- 29. L'enseigne -----------------------------------------------------------------------
+
+const towerSpot = colCenter(8);
+/** Monte sur `n` échos empilés au pied de la tour (sauts droits : on retombe sur la tête). */
+function climbTower(bot, n) {
+  bot.walkTo(towerSpot);
+  for (let i = 0; i < n; i++) bot.jump(0);
+}
+/** Le joueur : passer la barrière (l'alarme allume les faisceaux), grimper le mur jusqu'à l'enseigne. */
+function climbToSign(bot) {
+  bot.walkTo(colCenter(22));
+  const c = climber(bot);
+  c.toWall();
+  c.jumpGrab();
+  c.climbJump();
+  bot.holdUntil(R | G | U, () => bot.p.onGround || bot.p.dead, 300);
+}
+
+test('29 enseigne : une tour de trois échos arrête les deux faisceaux, on grimpe à l’abri', () => {
+  const s = new Session(load('29-enseigne.json'));
+  const bot = new Bot(s);
+  for (let n = 0; n < 3; n++) {
+    climbTower(bot, n);
+    assert.equal(bot.feet, rowTop(12) - n * 22 * SUB, `étage ${n}`);
+    bot.idle(5);
+    assert.equal(s.world.lasers[0].latched, false, 'surtout ne pas couper l’alarme');
+    s.replay();
+  }
+  bot.idle(130);
+  const [e1, e2, e3] = s.world.actors;
+  assert.equal(e2.ground, e1);
+  assert.equal(e3.ground, e2, 'la tour tient');
+  climbToSign(bot);
+  assert.equal(s.world.lasers[0].latched, true, 'l’alarme a allumé les faisceaux');
+  assert.equal(s.world.lasers[1].hit, e3, 'le faisceau du haut s’arrête sur le troisième écho');
+  assert.equal(s.world.lasers[2].hit, e2, 'celui du bas sur le deuxième');
+  assert.equal(bot.p.dead, false);
+  assert.equal(bot.feet, rowTop(4));
+  bot.holdUntil(R, () => s.state !== 'playing', 200);
+  assert.equal(s.outcome, 'exit');
+});
+
+test('29 enseigne : seul, ou avec une tour de deux, les faisceaux nous fauchent', () => {
+  const s = new Session(load('29-enseigne.json'));
+  const bot = new Bot(s);
+  climbToSign(bot);
+  assert.equal(bot.died, true, 'seul');
+  // Tour de deux échos : le faisceau du haut passe au-dessus d'elle.
+  const s2 = new Session(load('29-enseigne.json'));
+  const b2 = new Bot(s2);
+  for (let n = 0; n < 2; n++) {
+    climbTower(b2, n);
+    b2.idle(5);
+    s2.replay();
+  }
+  b2.idle(60);
+  climbToSign(b2);
+  assert.equal(b2.died, true, 'deux échos ne suffisent pas');
+});
+
+test('29 enseigne : un écho qui a coupé l’alarme fait échouer la construction', () => {
+  const s = new Session(load('29-enseigne.json'));
+  const bot = new Bot(s);
+  bot.walkTo(colCenter(22)); // on va voir le mur… et l'alarme sonne
+  assert.equal(s.world.lasers[0].latched, true);
+  bot.untilAttemptEnds();
+  climbTower(bot, 0);
+  bot.idle(5);
+  s.replay();
+  // Le deuxième étage se fait faucher : les faisceaux sont allumés par le vieil écho.
+  bot.walkTo(towerSpot);
+  bot.holdUntil(0, () => s.world.lasers[0].latched, 400);
+  assert.equal(s.world.lasers[0].latched, true, 'le vieil écho a redéclenché l’alarme');
+  bot.jump(0);
+  bot.idle(20);
+  assert.equal(bot.died, true);
+});
+
+// --- 30. Le dernier métro -----------------------------------------------------------------
+
+const shutter30 = (s) => s.world.doors.find((d) => d.id === '3');
+/** Écho C : marcher sur la passerelle, tomber sur le pilier, tenir c. */
+function fallOnPillar(s, bot) {
+  bot.holdUntil(R, () => s.world.crumbles[0].state === 'gone', 300);
+  bot.holdUntil(0, () => bot.p.onGround && bot.feet === rowTop(12), 60);
+  bot.walkTo(colCenter(9));
+  assert.equal(button(s, 'c').pressed, true, 'c');
+}
+/** Écho B : l'escalier, le tapis, s'arrêter avant le faisceau… « Rejouer » (fait par l'appelant). */
+function rideToB(bot) {
+  bot.walkTo(colCenter(3));
+  bot.jump(-1);
+  bot.walkTo(colCenter(2));
+  bot.jump(1);
+  bot.walkTo(colCenter(5));
+  bot.leap({ dir: 0, after: R, afterAt: 10 });
+  assert.equal(bot.feet, rowTop(3), 'sur le tapis');
+  bot.walkTo(colCenter(7));
+}
+/** Traverser le fossé par la tête de l'écho tombé sur le pilier. */
+function crossOnHead(s, bot) {
+  bot.holdUntil(0, () => s.world.crumbles[0].state === 'gone', 300);
+  bot.walkTo(colCenter(4));
+  bot.leap({ dir: R, dd: R, da: 8, until: () => bot.p.onGround || bot.p.dead });
+  assert.equal(bot.p.ground?.kind, 'echo', 'sur la tête de l’écho du pilier');
+  bot.idle(3);
+  bot.leap({ dir: R, dd: U, da: 12, until: () => bot.p.onGround || bot.p.dead });
+  assert.equal(bot.feet, rowTop(7), 'de l’autre côté');
+}
+
+test('30 métro : trois échos (pilier, tapis, volet) et l’on monte dans le dernier métro', () => {
+  const s = new Session(load('30-metro.json'));
+  const bot = new Bot(s);
+  assert.equal(s.ticksLeft, null, 'pas de chrono');
+  assert.equal(s.level.exitStyle, 'train');
+  assert.equal(s.level.chapterEnd, true);
+  // Écho 1 : la passerelle cède, il tombe sur le pilier (bouton c).
+  fallOnPillar(s, bot);
+  s.replay();
+  // Écho 2 : monter sur le tapis, « Rejouer » avant le faisceau : le tapis l'emmène sur b.
+  rideToB(bot);
+  s.replay();
+  // Écho 3 : passer le fossé sur la tête de l'écho 1, tenir le volet (bouton a).
+  crossOnHead(s, bot);
+  bot.walkTo(colCenter(15));
+  assert.equal(button(s, 'a').pressed, true, 'a');
+  s.replay();
+  // Le joueur : le fossé, puis attendre volet fermé et b tenu, et monter dans la rame.
+  crossOnHead(s, bot);
+  bot.holdUntil(0, () => s.world.tick > 20 && !shutter30(s).target && shutter30(s).open === 0 && button(s, 'b').pressed, 900);
+  assert.equal(button(s, 'b').pressed, true, 'l’écho du tapis est arrivé');
+  bot.holdUntil(R, () => s.state !== 'playing' || bot.p.dead, 300);
+  assert.equal(alarm(s).latched, false, 'pas d’alarme');
+  assert.equal(s.outcome, 'exit');
+});
+
+test('30 métro : sans l’écho du volet, l’alarme verrouille le portillon', () => {
+  const s = new Session(load('30-metro.json'));
+  const bot = new Bot(s);
+  fallOnPillar(s, bot);
+  s.replay();
+  rideToB(bot);
+  s.replay();
+  crossOnHead(s, bot);
+  bot.holdUntil(0, () => button(s, 'b').pressed, 900);
+  bot.holdUntil(R, () => alarm(s).latched, 300);
+  assert.equal(alarm(s).latched, true);
+  bot.holdUntil(R, () => s.state !== 'playing', 300);
+  assert.equal(s.outcome, null, 'portillon fermé');
+});
+
+test('30 métro : sans l’écho du tapis, la rame reste fermée ; à pied, le faisceau du tapis tue', () => {
+  const s = new Session(load('30-metro.json'));
+  const bot = new Bot(s);
+  fallOnPillar(s, bot);
+  s.replay();
+  crossOnHead(s, bot);
+  bot.walkTo(colCenter(15));
+  s.replay();
+  crossOnHead(s, bot);
+  bot.holdUntil(0, () => s.world.tick > 20 && shutter30(s).open === 0 && !shutter30(s).target, 300);
+  bot.holdUntil(R, () => s.state !== 'playing' || bot.cx > colCenter(22), 300);
+  bot.idle(60);
+  assert.equal(s.outcome, null, 'la porte de la rame est restée close (b)');
+  // Marcher soi-même sur le tapis : le faisceau.
+  const s2 = new Session(load('30-metro.json'));
+  const b2 = new Bot(s2);
+  rideToB(b2);
+  b2.holdUntil(R, () => b2.p.dead, 200);
+  assert.equal(b2.p.dead, true);
+});
+
+test('30 métro : passerelle tombée, le fossé ne se franchit que par la tête de l’écho', () => {
+  const lv = load('30-metro.json');
+  const across = (w) => w.player.onGround && !w.player.dead && w.player.y + w.player.h <= rowTop(7) && w.player.x + w.player.w > 12 * TILE * SUB;
+  // Depuis le bord, et depuis le pilier nu : rien n'y fait (saut, dash, saut au mur).
+  for (const [x, feet] of [[colCenter(3), rowTop(9)], [colCenter(4) + 3, rowTop(9)], [colCenter(8), rowTop(12)], [colCenter(9), rowTop(12)]]) {
+    const w = new World(lv, [], 1);
+    w.crumbles[0].state = 'gone';
+    w.player.x = (x - 5) * SUB;
+    w.player.y = feet - w.player.h;
+    w.step(0);
+    w.step(0);
+    assert.equal(countLeaps(w, across), 0, `depuis x=${x}`);
+  }
+  // Et l'on ne descend pas sur le pilier sans casser la passerelle : le fond du fossé tue.
+  const s = new Session(lv);
+  const bot = new Bot(s);
+  bot.walkTo(colCenter(5) + 2);
+  bot.holdUntil(0, () => s.world.crumbles[0].state === 'gone', 120);
+  bot.holdUntil(L, () => bot.p.dead || bot.p.onGround, 120);
+  bot.idle(20);
+  assert.equal(bot.died, true);
 });
