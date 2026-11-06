@@ -24,7 +24,7 @@
     "############################"
   ],
   "decor": [
-    {"type": "train", "col": 0, "row": 4, "cols": 6, "floorRow": 9, "groundRow": 11, "variant": "montagne"},
+    {"type": "train", "col": 0, "row": 4, "cols": 6, "floorRow": 10, "groundRow": 11, "variant": "montagne"},
     {"type": "lamp", "col": 7, "row": 7},
     {"type": "pine", "col": 10, "row": 6, "rows": 5},
     {"type": "bench", "col": 17, "row": 10},

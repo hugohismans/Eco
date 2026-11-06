@@ -518,3 +518,93 @@ test('25 toits : seul, la porte se referme bien avant qu’on y arrive', () => {
   assert.equal(s.outcome, null);
   assert.equal(s.world.doors[0].open, 0);
 });
+
+// --- 26. Le marché couvert --------------------------------------------------------------
+
+const button = (s, id) => s.world.buttons.find((b) => b.id === id);
+
+/** Monter sur la marche, puis sauter sur l'étal fragile. */
+function jumpOnStall(bot) {
+  bot.walkTo(colCenter(6));
+  bot.jump(1);
+  bot.walkTo(colCenter(7));
+  bot.jump(1);
+}
+
+/** Grimper sur le tapis du haut (marche de gauche, puis le bord du tapis). */
+function climbToBelt(bot) {
+  const c = climber(bot, L);
+  c.toWall();
+  c.jumpGrab();
+  bot.holdUntil(L | G | U, () => bot.p.onGround, 200);
+  bot.walkTo(26);
+  const c2 = climber(bot, R);
+  c2.jumpGrab();
+  bot.holdUntil(R | G | U, () => bot.p.onGround, 200);
+  assert.equal(bot.feet, rowTop(5), 'sur le tapis');
+}
+
+test('26 marché : un écho immobile sur le tapis traverse le faisceau ; un autre presse l’étal au bon moment', () => {
+  const s = new Session(load('26-marche.json'));
+  const bot = new Bot(s);
+  // Écho 1 : monter sur le tapis, s'arrêter avant le faisceau… et « Rejouer ».
+  climbToBelt(bot);
+  bot.walkTo(colCenter(5));
+  s.replay();
+  // Écho 2 : attendre que l'écho 1 arrive au bouton b, puis sauter sur l'étal fragile.
+  bot.holdUntil(0, () => button(s, 'b').pressed, 600);
+  assert.equal(button(s, 'b').pressed, true, 'le tapis a porté l’écho jusqu’au bouton');
+  const tb = s.world.tick;
+  jumpOnStall(bot);
+  assert.equal(button(s, 'a').pressed, true, 'sur l’étal');
+  assert.equal(s.world.doors[0].target, true, 'a ET b : la porte s’ouvre');
+  bot.untilAttemptEnds();
+  // Tentative 3 : attendre devant la porte, passer pendant que l'étal tient.
+  bot.walkTo(colCenter(6));
+  bot.jump(1);
+  bot.walkTo(colCenter(21));
+  bot.holdUntil(0, () => s.world.doors[0].open >= 8, 600);
+  assert.ok(s.world.tick > tb, 'la porte ne s’ouvre qu’après l’arrivée de l’écho au bouton');
+  bot.holdUntil(R, () => s.state !== 'playing', 200);
+  assert.equal(s.outcome, 'exit');
+});
+
+test('26 marché : on ne passe pas le faisceau du tapis soi-même', () => {
+  const s = new Session(load('26-marche.json'));
+  const bot = new Bot(s);
+  climbToBelt(bot);
+  bot.holdUntil(R, () => bot.p.dead, 200);
+  assert.equal(bot.p.dead, true);
+});
+
+test('26 marché : l’étal ne tient qu’un instant (trop tôt, trop loin)', () => {
+  // Étal pressé avant l'arrivée de l'écho au bouton b : la porte ne s'ouvre jamais.
+  const s = new Session(load('26-marche.json'));
+  const bot = new Bot(s);
+  climbToBelt(bot);
+  bot.walkTo(colCenter(5));
+  s.replay();
+  jumpOnStall(bot);
+  assert.equal(button(s, 'a').pressed, true);
+  bot.idle(50);
+  assert.equal(button(s, 'a').pressed, false, 'l’étal a cédé');
+  bot.untilAttemptEnds();
+  let opened = false;
+  bot.walkTo(colCenter(6));
+  bot.jump(1);
+  bot.walkTo(colCenter(21));
+  bot.holdUntil(0, () => { opened ||= s.world.doors[0].open > 0; return s.attempt !== 3; }, 700);
+  assert.equal(opened, false);
+  // Seul sur l'étal (écho au bouton b) : la porte se referme bien avant qu'on l'atteigne.
+  const s2 = new Session(load('26-marche.json'));
+  const b2 = new Bot(s2);
+  climbToBelt(b2);
+  b2.walkTo(colCenter(5));
+  s2.replay();
+  b2.holdUntil(0, () => button(s2, 'b').pressed, 600);
+  jumpOnStall(b2);
+  assert.equal(s2.world.doors[0].target, true);
+  for (let i = 0; i < 120 && s2.attempt === 2; i++) b2.step(i % 11 === 0 ? R | X : R);
+  assert.equal(s2.outcome, null);
+  assert.equal(s2.world.doors[0].open, 0);
+});

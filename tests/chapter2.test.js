@@ -135,6 +135,18 @@ test('11 arrivée : sur la glace, on glisse au-delà du bouton si l’on lâche 
   assert.equal(s.world.buttons[0].pressed, false, 'on a glissé plus loin');
 });
 
+test('11 arrivée : « Rejouer » en pleine glissade, l’écho glisse hors du bouton', () => {
+  const s = new Session(load('11-arrivee.json'));
+  const bot = new Bot(s);
+  bot.holdUntil(IN_RIGHT, () => s.world.buttons[0].pressed);
+  bot.hold(IN_RIGHT, 10);
+  assert.equal(s.world.buttons[0].pressed, true, 'sur le bouton, mais lancé');
+  s.replay();
+  const echo = s.world.actors[0];
+  bot.holdUntil(0, () => echo.finished && echo.vx === 0, 300);
+  assert.equal(s.world.buttons[0].pressed, false, 'sa bande finie, l’écho a continué de glisser');
+});
+
 test('11 arrivée : un écho tient le bouton, on passe la porte', () => {
   const s = new Session(load('11-arrivee.json'));
   const bot = new Bot(s);
