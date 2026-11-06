@@ -1,0 +1,36 @@
+{
+  "id": "terminus",
+  "name": "Le terminus",
+  "theme": "terminus",
+  "chapter": 6,
+  "narration": "Le train s'arrête ici. Plus loin, il n'y a que la mer. (provisoire)",
+  "duration": 10,
+  "abilities": ["walljump", "grab", "dash"],
+  "buttons": {"a": {"hold": 90}},
+  "doors": {"1": {"buttons": ["a"]}},
+  "lasers": [{"col": 9, "row": 0, "buttons": ["a"]}],
+  "grid": [
+    "#########v##################",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#........................###",
+    "#........................1..",
+    "#........................1EE",
+    "#a..P....................1EE",
+    "############################"
+  ],
+  "decor": [
+    {"type": "skylight", "col": 2, "row": 1, "cols": 20},
+    {"type": "clock", "col": 14, "row": 3},
+    {"type": "poster", "col": 5, "row": 7, "variant": "mer"},
+    {"type": "bench", "col": 16, "row": 12},
+    {"type": "sign", "col": 20, "row": 6, "text": "TERMINUS"},
+    {"type": "pendant", "col": 21, "row": 1, "cable": 5}
+  ]
+}
