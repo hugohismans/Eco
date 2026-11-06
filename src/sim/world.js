@@ -49,7 +49,8 @@ export class World {
     /** Événements du dernier tick (sons, effets) : [{type, source}] */
     this.events = [];
 
-    this.buttons = level.buttons.map((b) => ({ ...b, pressed: false }));
+    this.buttons = level.buttons.map((b) => ({ ...b, pressed: false, timer: 0, count: 0 }));
+    this.winds = level.winds.map((w) => ({ ...w, on: true }));
     this.levers = level.levers.map((l) => ({ ...l, kind: 'lever', pressed: false }));
     // Tout ce qu'un lien peut citer : boutons, leviers, capteurs.
     this.switchById = new Map([...this.buttons, ...this.levers].map((b) => [b.id, b]));
@@ -111,7 +112,13 @@ export class World {
       const bits = actorInput(a, this.tick, playerInput);
       if (!a.dead) stepActor(this, a, bits);
     }
-    // 3 bis. Échafaudages : ils cèdent peu après qu'on s'y est posé (ou agrippé).
+    // 3 bis. Courants d'air : ils poussent tout ce qui s'y trouve.
+    for (const wd of this.winds) {
+      wd.on = cycleOn(wd.cycle, wd.phase, this.tick);
+      if (!wd.on) continue;
+      for (const o of this.bodies()) if (overlaps(o, wd)) moveAxis(this, o, 'x', wd.dx);
+    }
+    // 3 ter. Échafaudages : ils cèdent peu après qu'on s'y est posé (ou agrippé).
     this.updateCrumbles();
     // Ressorts : quiconque pose le pied dessus (en marchant ou en tombant) repart en l'air.
     for (const sp of this.springs) {
@@ -123,16 +130,37 @@ export class World {
     // 4. Faisceaux.
     this.computeBeams();
     const p = this.player;
-    if (!p.dead && this.lasers.some((l) => !l.sensor && l.hit === p)) {
+    if (!p.dead && this.lasers.some((l) => !l.sensor && !l.erase && l.hit === p)) {
       p.dead = true;
       p.vx = 0;
       p.vy = 0;
       this.emit('death', p);
     }
+    // La lampe du contrôleur efface les échos qu'elle touche.
+    for (const l of this.lasers) {
+      if (l.erase && l.hit && l.hit.kind === 'echo' && !l.hit.dead) {
+        l.hit.dead = true;
+        l.hit.erased = true;
+        this.emit('erase', l.hit);
+        this.computeBeams();
+      }
+    }
+    // La marée : on se noie quand l'eau passe au-dessus de la tête (pas les échos).
+    if (!p.dead && this.level.water && p.y + (p.h >> 2) > this.waterY()) {
+      p.dead = true;
+      p.vx = 0;
+      p.vy = 0;
+      this.emit('drown', p);
+    }
     // 5. Boutons, leviers, capteurs.
     const bodies = this.bodies();
     for (const b of this.buttons) {
-      const pressed = bodies.some((o) => overlaps(o, b));
+      // Plaque lourde : il faut assez de corps dessus. Minuterie : elle reste active un moment.
+      b.count = bodies.filter((o) => overlaps(o, b)).length;
+      const active = b.count >= b.weight;
+      if (active) b.timer = b.hold;
+      else if (b.timer > 0) b.timer--;
+      const pressed = active || b.timer > 0;
       if (pressed !== b.pressed) {
         b.pressed = pressed;
         this.emit(pressed ? 'button-down' : 'button-up', b);
@@ -208,9 +236,17 @@ export class World {
   /** Allumé maintenant ? (boutons reliés, et cycle éventuel) */
   laserOn(l) {
     if (!l.linkOn) return false;
-    if (!l.cycle) return true;
-    const period = l.cycle[0] + l.cycle[1];
-    return ((this.tick + l.phase) % period + period) % period < l.cycle[0];
+    return cycleOn(l.cycle, l.phase, this.tick);
+  }
+
+  /** Hauteur de la surface de l'eau (sous-pixels, repère de la grille), ou Infinity. */
+  waterY() {
+    const wt = this.level.water;
+    if (!wt) return Infinity;
+    const pos = (((this.tick + wt.phase) % wt.period) + wt.period) % wt.period;
+    const half = wt.period >> 1;
+    const frac = pos < half ? pos : wt.period - pos;
+    return wt.y0 - Math.floor((wt.amp * frac) / half);
   }
 
   updateDoor(d) {
@@ -364,6 +400,13 @@ export class World {
       l.ey = l.oy + l.dy * dist;
     }
   }
+}
+
+/** Cycle [allumé, éteint] décalé de `phase` : actif à ce tick ? (sans cycle : toujours) */
+function cycleOn(cycle, phase, tick) {
+  if (!cycle) return true;
+  const period = cycle[0] + cycle[1];
+  return (((tick + phase) % period) + period) % period < cycle[0];
 }
 
 /** Rebond sur un ressort : acteur (dash rechargé) ou valise (un peu moins haut). */

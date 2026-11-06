@@ -129,7 +129,7 @@ test('chapitre 4 : dix pièces bien formées', () => {
       assert.equal(def.exitStyle, 'train');
       assert.ok(def.decor.some((d) => d.type === 'train' && d.variant === 'ancien' && d.layer === 'front'));
       assert.ok(def.decor.some((d) => d.type === 'bench'));
-      assert.ok(level.stay);
+      assert.ok(level.chapterEnd, 'le vieux train mène au chapitre 5');
     } else {
       assert.ok(def.duration > 0, file);
     }
@@ -983,17 +983,6 @@ test('40 locomotives : sans chrono ; deux échos ouvrent la grille, et l’on mo
   bot.walkTo(colCenter(17));
   bot.jump(1);
   assert.equal(bot.exit(IN_RIGHT), 'exit');
-  assert.equal(s.level.endings.exit, 'Cette fois, je monte. (provisoire)');
-});
-
-test('40 locomotives : ou bien l’on reste sur le banc', () => {
-  const s = new Session(load('40-locomotives.json'));
-  const bot = new Bot(s);
-  halleEchoes(bot);
-  bot.walkTo(colCenter(16) + 8);
-  bot.step(IN_DOWN);
-  assert.equal(s.outcome, 'stay');
-  assert.equal(s.level.endings.stay, 'Je reste. Le quai est doux, la nuit. (provisoire)');
 });
 
 test('40 locomotives : seul, ou avec un seul écho, la grille reste fermée ; on ne s’assoit qu’au-delà', () => {
@@ -1004,7 +993,7 @@ test('40 locomotives : seul, ou avec un seul écho, la grille reste fermée ; on
   bot.idle(30);
   assert.equal(door(s, '1').open, 0);
   bot.step(IN_DOWN);
-  assert.equal(s.outcome, null, 'le banc est de l’autre côté');
+  assert.equal(s.outcome, null);
   // Un écho dans le tableau (a), le joueur sur b : il faut encore passer.
   walkBlind(bot, IN_LEFT, 150);
   s.replay();

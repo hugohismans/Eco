@@ -34,7 +34,8 @@ export class Session {
 
   /** Les tentatives rejouées comme échos dans le monde courant. */
   get echoes() {
-    return this.history.slice(-MAX_ECHOES);
+    const n = this.level.maxEchoes ?? MAX_ECHOES;
+    return n === 0 ? [] : this.history.slice(-n);
   }
 
   /** Ticks restants avant la fin de la tentative, ou null sans chrono. */

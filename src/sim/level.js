@@ -15,6 +15,11 @@
 //   "stay": { "col": 6, "row": 15, "cols": 2 },    zone où l'on peut « rester » (fin)
 //   "endings": { "exit": "…", "stay": "…" },       phrases de fin (dernier niveau)
 //   "exitStyle": "door" | "train",
+//   "buttons": { "a": { "weight": 2, "hold": 90 } },  plaque lourde (n corps), minuterie (ticks)
+//   "winds": [ { "col", "row", "cols", "rows", "dx": 12, "cycle": [on, off], "phase" } ],
+//   "water": { "row": 12, "amp": 3, "period": 600, "phase": 0 },  marée (rangées, ticks)
+//   "maxEchoes": 2,                                   moins d'échos autorisés
+// Faisceau "erase": true : la lampe du contrôleur, qui efface les échos qu'elle touche.
 //   "abilities": ["walljump", "grab", "dash"],     capacités disponibles
 //   "teach": "dash",                                capacité présentée ici (carte)
 //   "decor": [ { "type": "bench", "col": 3, "row": 14 } ]   (purement visuel)
@@ -195,6 +200,7 @@ export function parseLevel(def) {
       phase: cfg?.phase | 0,
       sensor: cfg?.sensor ? String(cfg.sensor) : null,
       latch: !!cfg?.latch,
+      erase: !!cfg?.erase,
     };
   });
   for (const l of laserLinks) {
@@ -238,6 +244,39 @@ export function parseLevel(def) {
     }
     : null;
 
+  // Boutons particuliers : plaques lourdes et minuteries.
+  for (const [id, cfg] of Object.entries(def.buttons ?? {})) {
+    const b = buttons.find((x) => x.id === id);
+    if (!b) throw new Error(`${where} : « buttons » cite un bouton « ${id} » absent de la grille.`);
+    b.weight = Math.max(1, cfg.weight | 0 || 1);
+    b.hold = Math.max(0, cfg.hold | 0);
+  }
+  for (const b of buttons) { b.weight ??= 1; b.hold ??= 0; }
+
+  // Courants d'air (vent) : zones qui poussent horizontalement.
+  const winds = (def.winds ?? []).map((wd, i) => {
+    if (!wd.dx) throw new Error(`${where} : le vent ${i + 1} n'a pas de force « dx ».`);
+    return {
+      x: wd.col * TILE_SUB, y: wd.row * TILE_SUB,
+      w: (wd.cols ?? 1) * TILE_SUB, h: (wd.rows ?? 1) * TILE_SUB,
+      dx: wd.dx | 0,
+      cycle: wd.cycle ? [wd.cycle[0] | 0, wd.cycle[1] | 0] : null,
+      phase: wd.phase | 0,
+    };
+  });
+
+  // Marée : la surface monte et redescend en dents de scie, en entiers.
+  const water = def.water
+    ? {
+      y0: def.water.row * TILE_SUB,
+      amp: Math.round((def.water.amp ?? 0) * TILE_SUB),
+      period: Math.max(2, def.water.period | 0 || 600),
+      phase: def.water.phase | 0,
+    }
+    : null;
+
+  const maxEchoes = def.maxEchoes == null ? null : Math.max(0, Math.min(4, def.maxEchoes | 0));
+
   const abilities = def.abilities ?? [];
   for (const ab of abilities) {
     if (!ABILITIES.includes(ab)) throw new Error(`${where} : capacité « ${ab} » inconnue (${ABILITIES.join(', ')}).`);
@@ -275,6 +314,9 @@ export function parseLevel(def) {
     platforms,
     stay,
     endings: def.endings ?? null,
+    winds,
+    water,
+    maxEchoes,
     abilities: Object.freeze([...abilities]),
     teach: def.teach ?? null,
     chapter: def.chapter ?? 1,

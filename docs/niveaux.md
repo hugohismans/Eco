@@ -49,6 +49,8 @@ d'un chapitre, et d'un chapitre à l'autre.
 | 2 | La gare d'altitude | glace `~`, leviers `j…r`, faisceaux cycliques, téléphérique (plateforme en boucle) |
 | 3 | La ville | ressorts `S`, échafaudages fragiles `%`, tapis roulants `{ }`, barrières lumineuses (capteurs) et alarmes |
 | 4 | Le musée | tableaux `!` (seuls les échos les traversent), vitrines `?` (seuls les échos s'y heurtent), tout ensemble |
+| 5 | Le train de nuit | plaques lourdes (`weight`), lampe du contrôleur (faisceau `erase` qui efface les échos), vent sur le toit (`winds`), pièces à échos limités (`maxEchoes`) |
+| 6 | La mer | minuteries (`hold`), marée (`water`), tout ensemble ; le dernier train et le choix final |
 
 ## Chapitre 1 — La gare, la nuit (niveaux 1 à 10, faits)
 
@@ -168,6 +170,77 @@ locomotives. Ambiances `musee`, `reserve`, `halle`.
     d'échos, faisceaux cycliques.
 39. **Le grand escalier** (`grand-escalier`, musee). L'épreuve : quatre échos, tout ce
     qu'on a appris.
-40. **La halle des locomotives** (`locomotives`, halle, sans chrono). Le vieux train
-    exposé, la verrière, le banc. Une dernière énigme, douce ; puis le choix :
-    monter dans le train, ou rester sur le banc. Deux fins.
+40. **La halle des locomotives** (`locomotives`, halle, sans chrono, fin de chapitre).
+    Le vieux train exposé, qu'on disait immobile pour toujours. Une énigme douce ;
+    on monte, et il repart.
+
+## Chapitre 5 — Le train de nuit (41 à 50)
+
+Dans les voitures (`wagon` : banquettes, filets à bagages, fenêtres où défile la nuit)
+et sur le toit (`toit` : le vent, les caténaires, le paysage qui file). Nouveautés :
+
+- **Plaques lourdes** : `"buttons": {"a": {"weight": 2}}` ; il faut deux corps dessus
+  (joueur, échos, valises). Une valise + un écho, deux échos, ou un écho + soi.
+- **Lampe du contrôleur** : faisceau `"erase": true` (souvent cyclique). Il ne fait rien
+  au joueur, mais un écho qu'il touche s'efface pour la tentative. Les corps (joueur,
+  valise) l'arrêtent : on peut faire écran à un écho.
+- **Vent** : zones `winds` qui poussent tout ce qui s'y trouve (rafales avec `cycle`).
+  Le vent pousse aussi les échos et les valises : un écho immobile dérive.
+- **Moins d'échos** : `maxEchoes` (1 à 4) ; il faut faire plus avec moins.
+
+41. **Le couloir des voitures** (`couloir`, wagon). Une plaque lourde : un écho et
+    soi-même dessus, puis il faut partir… et l'écho seul ne suffit plus. Idée : un
+    écho + une valise.
+42. **Le compartiment** (`compartiment`, wagon). Valises sur le filet, plaque lourde ;
+    un écho pousse une valise sur la plaque et y reste.
+43. **Le contrôleur** (`controleur`, wagon). La lampe passe et repasse dans le couloir :
+    l'écho qui tient le bouton s'efface quand elle l'atteint. Le protéger (se placer
+    entre la lampe et lui, ou y glisser une valise) ou agir pendant qu'elle est éteinte.
+44. **Sur le toit** (`toit`, toit). Le vent par rafales ; sauter entre les voitures entre
+    deux rafales. Un écho immobile dérive avec le vent : on s'en sert pour qu'il
+    atteigne un bouton qu'on ne peut pas tenir soi-même.
+45. **Le soufflet** (`soufflet`, toit). Entre deux voitures : le vent emporte les échos
+    hors des boutons ; une valise sur la plaque lourde avec un écho résiste.
+46. **Le wagon-restaurant** (`restaurant`, wagon). Deux échos seulement (`maxEchoes`),
+    plaque lourde, levier : une tentative doit faire deux tâches.
+47. **Les couchettes** (`couchettes`, wagon). Montée par les couchettes (plateformes
+    fines), une lampe du contrôleur qui balaie de haut en bas : la tour d'échos doit
+    se construire pendant qu'elle est éteinte, ou à l'abri.
+48. **Le tunnel** (`tunnel`, toit). Plafond bas, vent continu, dash ; la lampe d'un
+    signal efface les échos qui dérivent trop loin.
+49. **La locomotive** (`locomotive`, toit). Tout le chapitre : plaque lourde, lampe,
+    vent, trois échos au plus.
+50. **L'aube** (`aube`, toit, fin de chapitre, sans chrono). Le jour se lève presque ;
+    on rejoint l'avant du train qui arrive au bord de la mer.
+
+## Chapitre 6 — La mer (51 à 60)
+
+Le terminus au bord de la mer (`terminus` : grande verrière, affiches de bains de mer)
+et la côte (`mer` : la mer et la lune, le phare, la jetée, les rochers). Nouveautés :
+
+- **Minuteries** : `"buttons": {"a": {"hold": 120}}` ; le bouton reste actif quelques
+  instants après qu'on l'a quitté. On orchestre des fenêtres de temps.
+- **Marée** : `"water": {"row", "amp", "period", "phase"}` ; l'eau monte et redescend
+  (toujours au même moment de chaque tentative). Le joueur s'y noie s'il a la tête sous
+  l'eau ; les échos, non : un écho peut tenir un bouton sous la mer, et sa tête
+  émerger comme un rocher.
+
+51. **Le terminus** (`terminus`, terminus). Une minuterie : appuyer, puis courir ; trop
+    loin pour soi seul. Un écho appuie au bon moment, la porte s'ouvre quand on arrive.
+52. **La plage** (`plage`, mer). La marée monte : rejoindre les rochers. Un écho sous
+    l'eau tient un bouton ; à marée haute, sa tête est une île.
+53. **La jetée** (`jetee`, mer). Planches fragiles, ressorts, marée.
+54. **Le phare** (`phare`, mer). Monter le phare ; sa lampe (faisceau `erase`
+    cyclique) efface les échos dans l'escalier ; minuteries aux paliers.
+55. **Les cabines de plage** (`cabines`, mer). Plaques lourdes et valises ; la marée
+    emporte… rien (les valises restent), mais noie le joueur : trois échos au plus.
+56. **Le port** (`port`, mer). Barques qui montent et descendent (plateformes), marée,
+    minuteries.
+57. **La digue** (`digue`, mer). Vent de mer et marée, dash.
+58. **La grotte** (`grotte`, mer). Une grotte marine qui se remplit ; leviers et
+    signaux cycliques.
+59. **La marée haute** (`maree-haute`, mer). L'épreuve finale : quatre échos, marée,
+    minuteries, plaques lourdes, lampe.
+60. **Le dernier train** (`dernier-train`, terminus, sans chrono). Douce. Le dernier
+    train attend au bout du quai, la mer derrière la verrière. Monter, ou rester sur
+    le banc : deux fins.

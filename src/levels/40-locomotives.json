@@ -3,16 +3,12 @@
   "name": "La halle des locomotives",
   "theme": "halle",
   "chapter": 4,
-  "narration": "Le vieux train ne part plus ; il attend seulement qu'on monte. (provisoire)",
+  "narration": "On disait qu'il ne partirait plus. Il attend qu'on monte. (provisoire)",
   "duration": null,
   "abilities": ["walljump", "grab", "dash"],
   "exitStyle": "train",
   "doors": {"1": {"buttons": ["a", "b"], "mode": "and"}},
-  "stay": {"col": 16, "row": 12, "cols": 2},
-  "endings": {
-    "exit": "Cette fois, je monte. (provisoire)",
-    "stay": "Je reste. Le quai est doux, la nuit. (provisoire)"
-  },
+  "chapterEnd": true,
   "grid": [
     "############################",
     "#..............#...........#",
