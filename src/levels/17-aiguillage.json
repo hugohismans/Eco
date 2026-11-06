@@ -1,0 +1,38 @@
+{
+  "id": "aiguillage",
+  "name": "L'aiguillage",
+  "theme": "chalet",
+  "chapter": 2,
+  "narration": "Chaque cabine attend que l'autre soit partie. (provisoire)",
+  "duration": 8,
+  "abilities": ["walljump", "grab", "dash"],
+  "platforms": [
+    {"col": 5, "row": 10, "cols": 2, "to": {"col": 10, "row": 10}, "buttons": ["j"], "behavior": "hold", "speed": 16},
+    {"col": 21, "row": 8, "cols": 2, "to": {"col": 16, "row": 8}, "buttons": ["j"], "behavior": "hold", "speed": 16}
+  ],
+  "grid": [
+    "############################",
+    "############################",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#.........................E#",
+    "#.........................E#",
+    "#.............##.......#####",
+    "#.P..j........##.......#####",
+    "#####.......####.......#####",
+    "#####.......####.......#####",
+    "#####.......####.......#####",
+    "#######^##^#######^##^######"
+  ],
+  "decor": [
+    {"type": "board", "col": 5, "row": 3, "cols": 5},
+    {"type": "clock", "col": 13, "row": 3},
+    {"type": "pendant", "col": 2, "row": 2, "cable": 8},
+    {"type": "pendant", "col": 25, "row": 2, "cable": 8},
+    {"type": "sign", "col": 17, "row": 3, "text": "AIGUILLAGE"},
+    {"type": "radiator", "col": 12, "row": 9},
+    {"type": "stove", "col": 24, "row": 7}
+  ]
+}

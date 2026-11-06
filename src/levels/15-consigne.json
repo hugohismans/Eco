@@ -1,0 +1,38 @@
+{
+  "id": "consigne",
+  "name": "La consigne",
+  "theme": "chalet",
+  "chapter": 2,
+  "narration": "Il faut parfois défaire ce qu'on vient de faire. (provisoire)",
+  "duration": 7,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {
+    "1": {"buttons": ["j"]},
+    "2": {"buttons": ["j"], "invert": true}
+  },
+  "grid": [
+    "############################",
+    "############################",
+    "#........................###",
+    "#........................###",
+    "#........................###",
+    "#........................###",
+    "#....j......P............###",
+    "################~~11~~######",
+    "####.....2.............#####",
+    "####.EE..2.............#####",
+    "####.EE..2.............#####",
+    "############################",
+    "############################",
+    "############################"
+  ],
+  "decor": [
+    {"type": "counter", "col": 6, "row": 6, "cols": 3, "label": "CONSIGNE"},
+    {"type": "pendant", "col": 10, "row": 2, "cable": 10},
+    {"type": "clock", "col": 15, "row": 3},
+    {"type": "window", "col": 21, "row": 3, "cols": 2, "rows": 2},
+    {"type": "radiator", "col": 2, "row": 6},
+    {"type": "walllamp", "col": 14, "row": 9},
+    {"type": "walllamp", "col": 20, "row": 9}
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "id": "parking",
+  "name": "Le parking",
+  "theme": "ville",
+  "chapter": 3,
+  "narration": "Les caméras se souviennent de chacun de nos passages. (provisoire)",
+  "duration": 10,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {"1": {"buttons": ["s"]}, "2": {"buttons": ["x"], "invert": true}, "3": {"buttons": ["b"], "invert": true}},
+  "lasers": [
+    {"col": 11, "row": 2, "sensor": "x", "latch": true},
+    {"col": 15, "row": 2, "sensor": "s"}
+  ],
+  "grid": [
+    "############################",
+    "############################",
+    "###########v###v############",
+    "...........3.........#..#...",
+    ".....................#..#...",
+    ".b...................#..#...",
+    "#####................#..#...",
+    "#####................#..#...",
+    "#####................#..#...",
+    "#####................1..2...",
+    "#####................1..2.E.",
+    "#####.P..............1..2.E.",
+    "############################",
+    "############################"
+  ],
+  "decor": [
+    {"type": "sign", "col": 1, "row": 3, "text": "NIVEAU -2"},
+    {"type": "walllamp", "col": 7, "row": 5},
+    {"type": "walllamp", "col": 13, "row": 5},
+    {"type": "walllamp", "col": 19, "row": 5},
+    {"type": "board", "col": 16, "row": 7, "cols": 3},
+    {"type": "neon", "col": 25, "row": 5, "text": "SORTIE", "color": "vert"}
+  ]
+}

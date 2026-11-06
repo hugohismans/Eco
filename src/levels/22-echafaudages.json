@@ -1,0 +1,34 @@
+{
+  "id": "echafaudages",
+  "name": "Les échafaudages",
+  "theme": "rue",
+  "chapter": 3,
+  "narration": "Ce qui nous a portés hier cède sous nos pas. (provisoire)",
+  "duration": 8,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {"1": {"buttons": ["a"]}},
+  "grid": [
+    "....................#.......",
+    "....................#.......",
+    "....................#.......",
+    "....................1.......",
+    "....................1...E...",
+    "....................1...E...",
+    "............################",
+    ".P............~#############",
+    "#####%%%%%%%%%~#############",
+    "####~.........~#############",
+    "####~....a....~#############",
+    "####>...##....<#############",
+    "############################",
+    "############################"
+  ],
+  "decor": [
+    {"type": "facade", "col": 15, "row": 0, "cols": 5, "rows": 6},
+    {"type": "shopfront", "col": 21, "row": 3, "cols": 6, "rows": 3, "label": "FLEURS"},
+    {"type": "lamp", "col": 2, "row": 7},
+    {"type": "sign", "col": 6, "row": 4, "text": "TRAVAUX"},
+    {"type": "neon", "col": 9, "row": 2, "text": "BAR", "color": "bleu"},
+    {"type": "pendant", "col": 11, "row": 7, "cable": 4}
+  ]
+}

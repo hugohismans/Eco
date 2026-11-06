@@ -1,0 +1,36 @@
+{
+  "id": "telepherique",
+  "name": "Le téléphérique",
+  "theme": "neige",
+  "chapter": 2,
+  "narration": "Quelqu'un doit rester sur le quai pour que la cabine parte. (provisoire)",
+  "duration": 8,
+  "abilities": ["walljump", "grab", "dash"],
+  "lasers": [{"col": 13, "row": 1, "cycle": [70, 50], "phase": 0}],
+  "platforms": [{"col": 6, "row": 9, "cols": 3, "to": {"col": 19, "row": 9}, "buttons": ["a"], "mode": "or", "behavior": "loop", "speed": 16}],
+  "grid": [
+    ".............#..............",
+    ".............v..............",
+    "............................",
+    "............................",
+    "............................",
+    "............................",
+    "............................",
+    "..........................E.",
+    ".a..P.....................E.",
+    "######................######",
+    "######................######",
+    "######................######",
+    "######................######",
+    "###########^###^###^########"
+  ],
+  "decor": [
+    {"type": "pine", "col": 0, "row": 4, "rows": 4},
+    {"type": "canopy", "col": 0, "row": 5, "cols": 6, "pillars": [0, 5]},
+    {"type": "sign", "col": 2, "row": 6, "text": "CABINE"},
+    {"type": "sign", "col": 23, "row": 5, "text": "SOMMET"},
+    {"type": "lamp", "col": 24, "row": 5},
+    {"type": "pine", "col": 26, "row": 4, "rows": 4},
+    {"type": "bench", "col": 23, "row": 8}
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "id": "passage",
+  "name": "Le passage couvert",
+  "theme": "rue",
+  "chapter": 3,
+  "narration": "Le tapis rend tout ce qu'on lui confie, sauf si l'on insiste. (provisoire)",
+  "duration": 9,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {"1": {"buttons": ["a"]}},
+  "grid": [
+    "############################",
+    "############################",
+    "##....................######",
+    "##....................######",
+    "##....................######",
+    "##....................######",
+    "##....................######",
+    "##....................######",
+    "##....................######",
+    "##....................1.....",
+    "##....................1...E.",
+    "#a...B.P..............1...E.",
+    "#}}####{{{{{{{{{{{{{########",
+    "############################"
+  ],
+  "decor": [
+    {"type": "pendant", "col": 6, "row": 3, "cable": 16},
+    {"type": "pendant", "col": 12, "row": 3, "cable": 16},
+    {"type": "pendant", "col": 18, "row": 3, "cable": 16},
+    {"type": "shopfront", "col": 8, "row": 8, "cols": 4, "rows": 3, "label": "MODES"},
+    {"type": "shopfront", "col": 14, "row": 8, "cols": 5, "rows": 3, "label": "LIBRAIRIE"},
+    {"type": "sign", "col": 3, "row": 6, "text": "PASSAGE"},
+    {"type": "plant", "col": 20, "row": 11}
+  ]
+}

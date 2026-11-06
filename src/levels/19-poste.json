@@ -1,0 +1,40 @@
+{
+  "id": "poste",
+  "name": "Le poste d'aiguillage",
+  "theme": "chalet",
+  "chapter": 2,
+  "narration": "Chacun à son poste, chacun à son heure. (provisoire)",
+  "duration": 10,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {
+    "1": {"buttons": ["j", "k"], "mode": "xor"},
+    "2": {"buttons": ["j", "k"], "mode": "xor", "invert": true},
+    "3": {"buttons": ["a"]}
+  },
+  "lasers": [{"col": 0, "row": 10, "cycle": [90, 30], "phase": 0}],
+  "grid": [
+    "############################",
+    "############################",
+    "#......#...................#",
+    "#......#...................#",
+    "#......1...................#",
+    "#......1...................#",
+    "#......1.j......P.......k..#",
+    "#22#########################",
+    "#..........................#",
+    "#..........................#",
+    ">.................a........#",
+    "#~~~~~~~~~~33~~~~~~~~~~~~~~#",
+    "###########EE###############",
+    "############################"
+  ],
+  "decor": [
+    {"type": "board", "col": 12, "row": 2, "cols": 6},
+    {"type": "window", "col": 19, "row": 2, "cols": 3, "rows": 2},
+    {"type": "clock", "col": 4, "row": 3},
+    {"type": "pendant", "col": 10, "row": 2, "cable": 8},
+    {"type": "stove", "col": 21, "row": 6},
+    {"type": "walllamp", "col": 7, "row": 8},
+    {"type": "walllamp", "col": 22, "row": 8}
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "id": "portraits",
+  "name": "La galerie des portraits",
+  "theme": "musee",
+  "chapter": 4,
+  "narration": "Ils me regardent passer sans me voir. (provisoire)",
+  "duration": 10,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {
+    "1": {"buttons": ["b", "c", "d"], "mode": "or"},
+    "2": {"buttons": ["e", "f", "g"], "mode": "or"}
+  },
+  "grid": [
+    "############################",
+    "#....................#.#...#",
+    "#....................#.#...#",
+    "#....................#.#...#",
+    "#########............#.#...#",
+    "#.......!............#.#...#",
+    "#.......!............#.#...#",
+    "#.efg...!............#.#...#",
+    "############.........#.#...#",
+    "#.......!............#.#...#",
+    "#.......!...===......1.2...#",
+    "#.......!......==....1.2.E.#",
+    "#...bcd.!.........P..1.2.E.#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "painting", "col": 2, "row": 5, "cols": 3, "rows": 1, "variant": 3},
+    {"type": "painting", "col": 4, "row": 10, "cols": 3, "rows": 1, "variant": 4},
+    {"type": "painting", "col": 13, "row": 4, "cols": 2, "rows": 3, "variant": 1},
+    {"type": "painting", "col": 17, "row": 4, "cols": 2, "rows": 3, "variant": 2},
+    {"type": "rope", "col": 10, "row": 12, "cols": 3},
+    {"type": "bench", "col": 16, "row": 12},
+    {"type": "pendant", "col": 15, "row": 2, "cable": 16}
+  ]
+}

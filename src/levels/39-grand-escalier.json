@@ -1,0 +1,44 @@
+{
+  "id": "grand-escalier",
+  "name": "Le grand escalier",
+  "theme": "musee",
+  "chapter": 4,
+  "narration": "Tous ceux que j'ai été montent l'escalier avec moi. (provisoire)",
+  "duration": 15,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {
+    "1": {"buttons": ["a"]},
+    "2": {"buttons": ["b"]},
+    "3": {"buttons": ["s"], "invert": true},
+    "4": {"buttons": ["s"]}
+  },
+  "lasers": [
+    {"col": 5, "row": 4, "sensor": "s", "latch": true},
+    {"col": 27, "row": 3}
+  ],
+  "grid": [
+    "############################",
+    "#########....3......4......#",
+    "#########....3......4.....E#",
+    "#########....3......4.....E<",
+    "#####v###===################",
+    "#.....!..===2..............#",
+    "#.....!.....2..............#",
+    "#.....!..===2..............#",
+    "#.....!.....2....?b........#",
+    "#########################==#",
+    "#...!...................1..#",
+    "#...!...................1==#",
+    "#a..!....P..............1..#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "painting", "col": 15, "row": 10, "cols": 3, "rows": 2, "variant": 2},
+    {"type": "painting", "col": 21, "row": 6, "cols": 2, "rows": 2, "variant": 3},
+    {"type": "statue", "col": 11, "row": 12},
+    {"type": "sign", "col": 15, "row": 1, "text": "SECOURS"},
+    {"type": "walllamp", "col": 8, "row": 11},
+    {"type": "pendant", "col": 20, "row": 5, "cable": 2},
+    {"type": "rope", "col": 19, "row": 8, "cols": 3}
+  ]
+}

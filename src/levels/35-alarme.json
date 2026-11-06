@@ -1,0 +1,41 @@
+{
+  "id": "alarme",
+  "name": "Le système d'alarme",
+  "theme": "musee",
+  "chapter": 4,
+  "narration": "Tout le monde est parti ; seule l'alarme veille encore. (provisoire)",
+  "duration": 7,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {
+    "1": {"buttons": ["s"], "invert": true},
+    "2": {"buttons": ["s"]}
+  },
+  "lasers": [
+    {"col": 5, "row": 9, "sensor": "s", "latch": true},
+    {"col": 27, "row": 12}
+  ],
+  "grid": [
+    "############################",
+    "#.............#....#########",
+    "#.............#....#########",
+    "#.............#....#########",
+    "#.............#....#########",
+    "#.............#....#########",
+    "#.............#....#########",
+    "#.............#....#########",
+    "#.............#....#########",
+    "#####v#.......#....#########",
+    "#.....!.......1....2.......#",
+    "#.....!.......1....2......E#",
+    "#.....!P......1....2......E<",
+    "############################"
+  ],
+  "decor": [
+    {"type": "sign", "col": 15, "row": 3, "text": "SECOURS"},
+    {"type": "painting", "col": 8, "row": 5, "cols": 3, "rows": 2, "variant": 4},
+    {"type": "painting", "col": 16, "row": 5, "cols": 2, "rows": 3, "variant": 1},
+    {"type": "statue", "col": 17, "row": 12},
+    {"type": "walllamp", "col": 23, "row": 10},
+    {"type": "pendant", "col": 9, "row": 2, "cable": 8}
+  ]
+}

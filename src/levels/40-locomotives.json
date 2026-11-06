@@ -1,0 +1,41 @@
+{
+  "id": "locomotives",
+  "name": "La halle des locomotives",
+  "theme": "halle",
+  "chapter": 4,
+  "narration": "Le vieux train ne part plus ; il attend seulement qu'on monte. (provisoire)",
+  "duration": null,
+  "abilities": ["walljump", "grab", "dash"],
+  "exitStyle": "train",
+  "doors": {"1": {"buttons": ["a", "b"], "mode": "and"}},
+  "stay": {"col": 16, "row": 12, "cols": 2},
+  "endings": {
+    "exit": "Cette fois, je monte. (provisoire)",
+    "stay": "Je reste. Le quai est doux, la nuit. (provisoire)"
+  },
+  "grid": [
+    "############################",
+    "#..............#...........#",
+    "#..............#...........#",
+    "#..............#...........#",
+    "#..............#...........#",
+    "#..............#...........#",
+    "#..............#...........#",
+    "#..............#...........#",
+    "#..............#...........#",
+    "#####..........#.....E.....#",
+    "#...!..........1.....E.....#",
+    "#...!..........1..##########",
+    "#a..!...P...b?.1...........#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "skylight", "col": 3, "row": 1, "cols": 10},
+    {"type": "window", "col": 6, "row": 2, "cols": 4, "rows": 3},
+    {"type": "train", "variant": "ancien", "col": 18, "row": 5, "cols": 9, "floorRow": 11, "groundRow": 13, "layer": "front"},
+    {"type": "bench", "col": 16, "row": 12},
+    {"type": "lamp", "col": 13, "row": 8},
+    {"type": "clock", "col": 9, "row": 3},
+    {"type": "painting", "col": 1, "row": 5, "cols": 3, "rows": 2, "variant": 1}
+  ]
+}

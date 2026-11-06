@@ -1,0 +1,40 @@
+{
+  "id": "train-vallee",
+  "name": "Le train de la vallée",
+  "theme": "neige",
+  "chapter": 2,
+  "narration": "Pour descendre vers la ville, il faudra tous nous y mettre. (provisoire)",
+  "duration": null,
+  "abilities": ["walljump", "grab", "dash"],
+  "exitStyle": "train",
+  "chapterEnd": true,
+  "lasers": [
+    {"col": 21, "row": 1, "buttons": ["j"]},
+    {"col": 23, "row": 1, "buttons": ["j"], "invert": true}
+  ],
+  "platforms": [{"col": 18, "row": 9, "cols": 2, "to": {"col": 22, "row": 9}, "buttons": ["a"], "behavior": "hold"}],
+  "grid": [
+    ".....................#.#....",
+    ".....................v.v....",
+    "............................",
+    "............................",
+    "............................",
+    "............................",
+    "............................",
+    ".P.j.....................EE.",
+    "####...........a.........EE.",
+    "###>..........<~~~......####",
+    "##################......####",
+    "##################......####",
+    "##################......####",
+    "###################^###^####"
+  ],
+  "decor": [
+    {"type": "pine", "col": 0, "row": 3, "rows": 5},
+    {"type": "lamp", "col": 2, "row": 4},
+    {"type": "sign", "col": 15, "row": 5, "text": "VALLÉE"},
+    {"type": "pine", "col": 16, "row": 4, "rows": 5},
+    {"type": "gantry", "col": 20, "row": 1, "cols": 5},
+    {"type": "train", "col": 24, "row": 3, "cols": 4, "floorRow": 9, "groundRow": 13, "variant": "montagne", "layer": "front"}
+  ]
+}

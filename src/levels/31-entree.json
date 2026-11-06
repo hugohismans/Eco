@@ -1,0 +1,35 @@
+{
+  "id": "entree",
+  "name": "L'entrée",
+  "theme": "musee",
+  "chapter": 4,
+  "narration": "Derrière les tableaux, quelqu'un continue de marcher. (provisoire)",
+  "duration": 8,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {"1": {"buttons": ["a"]}},
+  "grid": [
+    "############################",
+    "#.....................#....#",
+    "#.....................#....#",
+    "#.....................#....#",
+    "#.....................#....#",
+    "#.....................#....#",
+    "#.....................#....#",
+    "#.....................#....#",
+    "#.....................#....#",
+    "#######...............#....#",
+    "#.....!...............1....#",
+    "#.....!...............1..E.#",
+    "#a....!......P........1..E.#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "sign", "col": 11, "row": 3, "text": "MUSEE"},
+    {"type": "skylight", "col": 10, "row": 1, "cols": 6},
+    {"type": "painting", "col": 9, "row": 7, "cols": 2, "rows": 2, "variant": 1},
+    {"type": "painting", "col": 16, "row": 6, "cols": 3, "rows": 2, "variant": 2},
+    {"type": "statue", "col": 19, "row": 12},
+    {"type": "rope", "col": 8, "row": 12, "cols": 3},
+    {"type": "pendant", "col": 3, "row": 10, "cable": 4}
+  ]
+}
