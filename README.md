@@ -137,7 +137,7 @@ décor (`lamp`, `pendant`, `window`, `clock`, `poster`, `bench`, `canopy`, `faca
 
 ## Niveaux
 
-Quarante pièces en quatre chapitres, chacun avec son ambiance ; on passe de l'un à
+Soixante pièces en six chapitres, chacun avec son ambiance ; on passe de l'un à
 l'autre en train (puis en métro) :
 
 1. **La gare, la nuit** (1–10) : boutons, portes, valises, faisceaux, monte-charge,
@@ -146,11 +146,16 @@ l'autre en train (puis en métro) :
 3. **La ville** (21–30) : ressorts, échafaudages fragiles, tapis roulants, barrières
    lumineuses et alarmes.
 4. **Le musée** (31–40) : tableaux que seuls les échos traversent, vitrines qui
-   n'arrêtent qu'eux ; la halle des locomotives et le choix final (monter, ou rester).
+   n'arrêtent qu'eux ; dans la halle des locomotives, un vieux train attend.
+5. **Le train de nuit** (41–50) : à bord et sur le toit ; courants d'air, plaques
+   lourdes (deux corps), minuteries, la lampe du contrôleur qui efface les échos.
+6. **La mer** (51–60) : le terminus, la côte, la marée qui monte et redescend,
+   des pièces qui ne gardent que peu d'échos ; le dernier train et le choix final
+   (monter, ou rester).
 
 La conception de chaque pièce (idée, astuce, progression) est dans
 [`docs/niveaux.md`](docs/niveaux.md). Chaque solution est jouée par un robot dans
-`tests/levels.test.js` et `tests/chapter2.test.js` à `chapter4.test.js`, qui
+`tests/levels.test.js` et `tests/chapter2.test.js` à `chapter6.test.js`, qui
 vérifient aussi qu'elle ne marche pas sans les échos et que les raccourcis évidents
 échouent.
 
@@ -198,7 +203,7 @@ La grille fait 28 colonnes sur 14 lignes (format paysage) :
 | `!` | tableau : seuls les échos le traversent |
 | `?` | vitrine : elle n'arrête que les échos |
 
-- `duration` en secondes, `null` pour un niveau sans chrono ; `chapter` (1 à 4) ;
+- `duration` en secondes, `null` pour un niveau sans chrono ; `chapter` (1 à 6) ;
   `chapterEnd: true` pour la pièce qui mène au chapitre suivant.
 - Faisceaux : `cycle: [allumé, éteint]` et `phase` (en ticks) ; `sensor: "id"` pour une
   barrière lumineuse non mortelle, utilisable comme un bouton ; `latch: true` pour une
@@ -207,4 +212,13 @@ La grille fait 28 colonnes sur 14 lignes (format paysage) :
   touche le joueur, la tentative reprend (elle ne devient pas un écho).
 - Une plateforme `hold` va vers `to` tant que ses boutons sont actifs et revient
   sinon ; une plateforme `loop` fait l'aller-retour tant qu'ils sont actifs.
+- `buttons: { "a": { "weight": 2, "hold": 90 } }` : plaque lourde (il faut deux corps
+  dessus) ; minuterie (elle reste active 90 ticks après qu'on l'a quittée).
+- `winds: [{ col, row, cols, rows, dx, cycle, phase }]` : courant d'air qui pousse
+  horizontalement de `dx` sous-pixels par tick tout ce qui s'y trouve.
+- Faisceau `erase: true` : la lampe du contrôleur, sans danger pour le joueur, qui
+  efface l'écho qu'elle touche (un corps ou une valise peut lui faire écran).
+- `water: { row, amp, period, phase }` : marée ; la surface monte de `amp` rangées
+  et redescend, en `period` ticks. Le joueur s'y noie ; les échos, non.
+- `maxEchoes` : nombre d'échos gardés dans la pièce (4 par défaut).
 - `stay` : zone où l'on peut choisir de rester (fin `stay`) ; la sortie donne la fin `exit`.
