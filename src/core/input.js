@@ -14,6 +14,7 @@
 import {
   IN_LEFT, IN_RIGHT, IN_JUMP, IN_ACT, IN_UP, IN_DOWN, IN_DASH, IN_GRAB,
 } from '../sim/constants.js';
+import { Gamepads } from './gamepad.js';
 
 // e.code désigne la position physique : KeyA/KeyW/KeyD/KeyS couvrent aussi
 // bien WASD (QWERTY) que ZQSD (AZERTY).
@@ -53,10 +54,19 @@ export class Input {
     this.usedTouch = false;
     /** Quand un menu est ouvert, le clavier sert au menu, pas au jeu. */
     this.menuOpen = false;
+    /** Manettes, lues à chaque tick. */
+    this.pad = new Gamepads();
+    /** Appelé dans les menus : 'up' | 'down' | 'left' | 'right' | 'confirm' | 'back'. */
+    this.onMenuNav = () => {};
+    /** Appelé au premier bouton de manette (pour débloquer le son). */
+    this.onPadActivity = () => {};
   }
 
   /** Ouvre ou ferme la parenthèse « menu » : on relâche tout. */
   setMenuOpen(open) {
+    // En sortant d'un menu (A pour valider…), les boutons encore tenus ne
+    // comptent pas tant qu'on ne les a pas relâchés : pas de saut involontaire.
+    if (this.menuOpen && !open) this.padSuppress = this.lastPadBits ?? 0;
     this.menuOpen = open;
     this.releaseTouch?.();
     this.keys.clear();
@@ -70,7 +80,22 @@ export class Input {
     let bits = this.touchBits | this.latched;
     for (const code of this.keys) bits |= KEY_BITS[code] ?? 0;
     this.latched = 0;
-    return bits;
+    // Manette : dans un menu, elle navigue ; en jeu, elle joue.
+    const { bits: rawPad, edges, nav } = this.pad.poll();
+    this.lastPadBits = rawPad;
+    this.padSuppress = (this.padSuppress ?? 0) & rawPad;
+    const padBits = rawPad & ~this.padSuppress;
+    if (edges.size > 0) this.onPadActivity();
+    if (this.menuOpen) {
+      if (nav) this.onMenuNav(nav);
+      if (edges.has('A')) this.onMenuNav('confirm');
+      if (edges.has('B') || edges.has('START')) this.onMenuNav('back');
+      return bits;
+    }
+    if (edges.has('Y')) this.commands.push('replay');
+    if (edges.has('SELECT')) this.commands.push('restart');
+    if (edges.has('START')) this.commands.push('menu');
+    return bits | padBits;
   }
 
   /** Commandes (rejouer, effacer, menu, confirmer) depuis le dernier appel. */

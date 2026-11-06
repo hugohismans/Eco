@@ -25,17 +25,21 @@ Jusqu'à quatre échos coexistent. Le but : monter dans le dernier train.
 
 ## Commandes
 
-| | Ordinateur | Téléphone |
-|---|---|---|
-| Se déplacer, viser, grimper | flèches ou WASD / ZQSD | joystick (8 directions), à gauche |
-| Sauter | Espace, C ou K | « Saut » |
-| Dash (si débloqué) | X ou J (+ direction) | « Dash » (+ joystick) |
-| S'agripper (si débloqué) | Z, Maj ou L (maintenu) | « Agripper » (maintenu) |
-| Rester sur le quai | Bas ou E | joystick vers le bas |
-| Rejouer (nouvelle tentative) | R | « Rejouer » |
-| Effacer les échos | Retour arrière | « Effacer » |
-| Pause / menu | Échap ou P | « Menu » |
-| Dans les menus | flèches, Entrée, Échap | toucher |
+| | Clavier | Manette | Téléphone |
+|---|---|---|---|
+| Se déplacer, viser, grimper | flèches ou WASD / ZQSD | stick gauche ou croix | joystick (8 directions) |
+| Sauter | Espace, C ou K | A | « Saut » |
+| Dash (si débloqué) | X ou J (+ direction) | X ou B (+ direction) | « Dash » (+ joystick) |
+| S'agripper (si débloqué) | Z, Maj ou L (maintenu) | gâchettes ou bumpers | « Agripper » (maintenu) |
+| Rester / levier | Bas ou E | bas | joystick vers le bas |
+| Rejouer (nouvelle tentative) | R | Y | « Rejouer » |
+| Effacer les échos | Retour arrière | Select | « Effacer » |
+| Pause / menu | Échap ou P | Start | « Menu » |
+| Dans les menus | flèches, Entrée, Échap | stick ou croix, A, B | toucher |
+
+La manette (disposition standard : Xbox, PlayStation, Switch Pro…) est reconnue dès
+qu'on appuie sur un bouton ; elle vibre un peu au dash, aux ressorts et quand on
+touche un faisceau.
 
 Le jeu se joue en largeur et occupe tout l'écran : l'image est agrandie d'un
 facteur entier et le décor se prolonge autour de la pièce. Sur téléphone, les
@@ -88,7 +92,7 @@ src/sim/        simulation pure (aucun accès au DOM) : testable sous Node
   world.js      une tentative : pièce, boutons, portes, faisceaux, corps
   bodies.js     valises et plateformes mobiles
   session.js    suite des tentatives, enregistrement, échos, chrono
-src/core/       boucle à pas fixe, entrées clavier / tactile, sauvegarde
+src/core/       boucle à pas fixe, entrées clavier / manette / tactile, sauvegarde
 src/audio/      sons et ambiance synthétisés
 src/ui/         écrans d'interface (titre, niveaux, pause, réussite, fin), vignettes
 src/render/     mise à l'échelle entière, pixel art, éclairage, interface (lit l'état, ne l'écrit jamais)

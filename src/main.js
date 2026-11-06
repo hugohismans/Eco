@@ -46,6 +46,7 @@ sound.setMuted(save.muted);
 const unlock = () => sound.unlock();
 window.addEventListener('pointerdown', unlock);
 window.addEventListener('keydown', unlock);
+input.onPadActivity = unlock;
 
 // --- Menus -----------------------------------------------------------------------
 const menus = new Menus($('overlay'), {
@@ -127,12 +128,29 @@ await document.fonts.load('8px "Press Start 2P"', 'ÉCHO éà').catch(() => {});
 renderer = new Renderer(canvas);
 renderer.quality = quality;
 layout();
+input.onMenuNav = (action) => menus.nav(action);
 const game = new Game({ levels: LEVELS, chapters: CHAPTERS, input, renderer, sound, save, menus });
 
 // Accès direct à un niveau (tests) : …/Eco/#niveau=2 ; sinon, l'écran titre.
 const m = location.hash.match(/niveau=(\d+)/);
 if (m) game.play(Number(m[1]) - 1);
 else game.showTitle();
+
+// Manette branchée ou débranchée : l'aide affichée suit, et un petit message le dit.
+input.pad.onChange = (on) => {
+  document.body.classList.toggle('pad', on);
+  game.showControlsFor(game.session.level);
+  toast(on ? 'Manette connectée' : 'Manette déconnectée');
+};
+input.pad.refresh();
+
+function toast(text) {
+  const el = $('toast');
+  el.textContent = text;
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+}
 
 // On quitte l'onglet en pleine partie : pause.
 document.addEventListener('visibilitychange', () => { if (document.hidden) game.pause(); });

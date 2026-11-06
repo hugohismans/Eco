@@ -73,6 +73,23 @@ export class Menus {
     }, label);
   }
 
+  /** Navigation à la manette (mêmes règles qu'au clavier). */
+  nav(action) {
+    if (!this.open) return;
+    if (action === 'back') {
+      if (this.onBack) { this.sound?.event('ui'); this.onBack(); }
+      return;
+    }
+    if (action === 'confirm') {
+      const el = document.activeElement;
+      if (el && this.root.contains(el) && el.tagName === 'BUTTON' && !el.disabled) el.click();
+      else this.root.querySelector('button:not([disabled])')?.focus();
+      return;
+    }
+    const map = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
+    this.onKey({ code: map[action], preventDefault() {} });
+  }
+
   onKey(e) {
     if (!this.open) return;
     if (e.code === 'Escape') {

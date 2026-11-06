@@ -117,10 +117,13 @@ export class Game {
     document.body.classList.toggle('can-grab', ab.has('grab'));
     const hint = document.getElementById('keys-hint');
     if (!hint) return;
-    const lines = ['Flèches / ZQSD : bouger', 'Espace ou C : sauter'];
-    if (ab.has('dash')) lines.push('X : dash (+ direction)');
-    if (ab.has('grab')) lines.push('Z ou Maj : s\u2019agripper');
-    if (level.stay) lines.push('Bas ou E : rester');
+    const pad = this.input.pad?.connected;
+    const lines = pad
+      ? ['Stick / croix : bouger', 'A : sauter', 'Y : rejouer · Select : effacer']
+      : ['Flèches / ZQSD : bouger', 'Espace ou C : sauter'];
+    if (ab.has('dash')) lines.push(pad ? 'X ou B : dash (+ direction)' : 'X : dash (+ direction)');
+    if (ab.has('grab')) lines.push(pad ? 'Gâchette : s\u2019agripper' : 'Z ou Maj : s\u2019agripper');
+    if (level.stay) lines.push(pad ? 'Bas : rester' : 'Bas ou E : rester');
     hint.innerHTML = lines.join('<br>');
   }
 
@@ -220,6 +223,11 @@ export class Game {
       s.step(bits);
       for (const e of world.events) {
         this.sound.event(e.type, e.source);
+        if (e.source === world.player) {
+          if (e.type === 'death') this.input.pad?.rumble(300, 0.9, 0.5);
+          else if (e.type === 'dash') this.input.pad?.rumble(60, 0.2, 0.5);
+          else if (e.type === 'spring') this.input.pad?.rumble(80, 0.3, 0.3);
+        }
         if (e.type === 'exit' && s.level.endings) this.sound.event('depart');
       }
       for (const e of s.drainEvents()) this.sound.event(e.type);
