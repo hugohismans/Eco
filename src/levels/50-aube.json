@@ -1,0 +1,36 @@
+{
+  "id": "aube",
+  "name": "L'aube",
+  "theme": "toit",
+  "chapter": 5,
+  "narration": "Le ciel pâlit, et deux d'entre nous resteront sur le toit pour que j'entre. (provisoire)",
+  "duration": null,
+  "abilities": ["walljump", "grab", "dash"],
+  "chapterEnd": true,
+  "buttons": {"a": {"weight": 2}},
+  "doors": {"1": {"buttons": ["a"]}},
+  "winds": [{"col": 0, "row": 0, "cols": 17, "rows": 13, "dx": -10, "cycle": [100, 140], "phase": 100}],
+  "lasers": [{"col": 12, "row": 12}],
+  "grid": [
+    "............................",
+    "............................",
+    "............................",
+    "............................",
+    ".................###########",
+    ".................###########",
+    ".........................###",
+    ".........................1E#",
+    ".P................a......1E#",
+    "#########...################",
+    "#########...################",
+    "#########...################",
+    "#########...<###############",
+    "############################"
+  ],
+  "decor": [
+    {"type": "catenary", "col": 0, "row": 1, "cols": 17, "poles": true},
+    {"type": "sign", "col": 19, "row": 3, "text": "CABINE"},
+    {"type": "walllamp", "col": 22, "row": 6},
+    {"type": "walllamp", "col": 26, "row": 5}
+  ]
+}

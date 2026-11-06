@@ -1,0 +1,36 @@
+{
+  "id": "locomotive",
+  "name": "La locomotive",
+  "theme": "toit",
+  "chapter": 5,
+  "narration": "Tout ce que j'ai appris tient sur ce toit, contre le vent. (provisoire)",
+  "duration": 15,
+  "abilities": ["walljump", "grab", "dash"],
+  "maxEchoes": 3,
+  "buttons": {"a": {"weight": 2}, "b": {"weight": 2}},
+  "doors": {"1": {"buttons": ["a", "b"], "mode": "and"}},
+  "lasers": [{"col": 3, "row": 10, "erase": true, "cycle": [40, 200], "phase": 0}],
+  "winds": [{"col": 0, "row": 0, "cols": 25, "rows": 13, "dx": -10}],
+  "grid": [
+    "............................",
+    "............................",
+    "............................",
+    ".........................###",
+    ".........................###",
+    ".........................###",
+    ".........................1E#",
+    ".........................1E#",
+    ".P...............a......B1E#",
+    "############...#############",
+    "###v########...#############",
+    "###............#############",
+    "###b...........<############",
+    "############################"
+  ],
+  "decor": [
+    {"type": "catenary", "col": 0, "row": 1, "cols": 25, "poles": true},
+    {"type": "walllamp", "col": 26, "row": 4},
+    {"type": "sign", "col": 25, "row": 2, "text": "CABINE"},
+    {"type": "walllamp", "col": 27, "row": 6}
+  ]
+}

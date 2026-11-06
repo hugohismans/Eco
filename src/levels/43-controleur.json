@@ -1,0 +1,36 @@
+{
+  "id": "controleur",
+  "name": "Le contrôleur",
+  "theme": "wagon",
+  "chapter": 5,
+  "narration": "Sa lampe passe et repasse, et ce qu'elle éclaire, elle l'efface. (provisoire)",
+  "duration": 10,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {"1": {"buttons": ["a"]}, "2": {"buttons": ["a"]}},
+  "lasers": [{"col": 0, "row": 12, "erase": true, "cycle": [70, 60], "phase": 70}],
+  "grid": [
+    "############################",
+    "############################",
+    "############################",
+    "############################",
+    "############################",
+    "############################",
+    "#...........1...........2..#",
+    "#...........1...........2..#",
+    "#........####...........2..#",
+    "#....====!.~#...........2..#",
+    "#.BP.....!.~#...........2..#",
+    "#.==.....!.~#...........2..#",
+    ">........!a~#...........2.E#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "poster", "col": 5, "row": 6, "variant": "texte"},
+    {"type": "clock", "col": 22, "row": 7},
+    {"type": "window", "col": 15, "row": 8, "cols": 3, "rows": 2},
+    {"type": "window", "col": 19, "row": 8, "cols": 3, "rows": 2},
+    {"type": "walllamp", "col": 17, "row": 7},
+    {"type": "seat", "col": 16, "row": 12},
+    {"type": "seat", "col": 20, "row": 12, "flip": true}
+  ]
+}

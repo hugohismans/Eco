@@ -21,6 +21,30 @@ const floorY = (level, col, row) => LEVEL_Y + floorRowBelow(level, col, row) * T
 
 let seedCounter = 1;
 
+/**
+ * Fenêtre de wagon : cadre de bois, rideaux, et derrière la vitre la nuit qui
+ * défile (le rendu y fait passer le paysage, voir `out.motion`).
+ */
+function trainWindow(d, level, A, Em, out) {
+  const x = cellX(d), y = cellY(d);
+  const w = (d.cols ?? 2) * TILE, h = (d.rows ?? 2) * TILE;
+  rect(A, x - 3, y - 3, w + 6, h + 6, C.wood2);
+  rect(A, x - 3, y - 3, w + 6, 1, C.wood3);
+  rect(A, x - 4, y + h + 2, w + 8, 2, C.brass);
+  rect(A, x, y, w, h, C.ink);
+  rect(Em, x, y, w, h, C.night1);
+  rect(Em, x, y + h - 7, w, 7, '#0c1020');
+  for (let k = 0; k < 4; k++) px(Em, x + 3 + k, y + 3 + k, '#3a4a80');
+  // Rideaux de velours, à demi tirés.
+  for (const cx of [x - 2, x + w - 3]) {
+    rect(A, cx, y - 2, 5, h + 3, '#6e2630');
+    for (let k = 0; k < h; k += 3) px(A, cx + 2, y + k, '#9a3a40');
+  }
+  rect(A, x - 3, y - 4, w + 6, 2, C.brass);
+  out.motion.push({ x: x + 3, y, w: w - 6, h });
+  out.lights.push({ x: x + w / 2, y: y + h, r: 40, color: C.moon0, intensity: 0.2, flicker: 0, shadows: false, halo: 0 });
+}
+
 export const DECOR = {
   /** Banc de quai : lattes de bois, pieds en fonte. Posé au bas de sa case. */
   bench(d, level, A) {
@@ -88,6 +112,7 @@ export const DECOR = {
 
   /** Haute fenêtre cintrée : nuit dehors, rai de lune qui descend en biais. */
   window(d, level, A, Em, out) {
+    if (level.theme === 'wagon') return trainWindow(d, level, A, Em, out);
     const x = cellX(d), y = cellY(d);
     const w = (d.cols ?? 2) * TILE, h = (d.rows ?? 4) * TILE;
     const fy = floorY(level, d.col, d.row + (d.rows ?? 4));

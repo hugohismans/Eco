@@ -1,0 +1,37 @@
+{
+  "id": "couloir",
+  "name": "Le couloir des voitures",
+  "theme": "wagon",
+  "chapter": 5,
+  "narration": "Tout le monde dort, et il faut peser plus lourd que soi. (provisoire)",
+  "duration": 9,
+  "abilities": ["walljump", "grab", "dash"],
+  "maxEchoes": 1,
+  "buttons": {"a": {"weight": 2}},
+  "doors": {"1": {"buttons": ["a"]}},
+  "grid": [
+    "############################",
+    "############################",
+    "############################",
+    "############################",
+    "############################",
+    "############################",
+    "#......................1...#",
+    "#......................1...#",
+    "#......................1...#",
+    "#......................1...#",
+    "#......................1...#",
+    "#......................1.E.#",
+    "#.P.....B...a..........1.E.#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "window", "col": 3, "row": 7, "cols": 3, "rows": 2},
+    {"type": "window", "col": 9, "row": 7, "cols": 3, "rows": 2},
+    {"type": "window", "col": 15, "row": 7, "cols": 3, "rows": 2},
+    {"type": "walllamp", "col": 7, "row": 8},
+    {"type": "walllamp", "col": 19, "row": 8},
+    {"type": "clock", "col": 13, "row": 7},
+    {"type": "sign", "col": 24, "row": 6, "text": "VOITURE 7"}
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "compartiment",
+  "name": "Le compartiment",
+  "theme": "wagon",
+  "chapter": 5,
+  "narration": "Nos vieux bagages pèsent encore, comme tout ce qu'on n'a pas su laisser. (provisoire)",
+  "duration": 11,
+  "abilities": ["walljump", "grab", "dash"],
+  "maxEchoes": 2,
+  "buttons": {"a": {"weight": 2}, "b": {"weight": 2}},
+  "doors": {"1": {"buttons": ["a", "b"], "mode": "and"}},
+  "grid": [
+    "############################",
+    "############################",
+    "############################",
+    "############################",
+    "############################",
+    "############################",
+    "#.......................1..#",
+    "#.......................1..#",
+    "#.......................1..#",
+    "#...B..............B....1..#",
+    "#=====............=====.1..#",
+    "#.......................1..#",
+    "###.....a...P..b.....##.1.E#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "seat", "col": 1, "row": 12},
+    {"type": "seat", "col": 21, "row": 12, "flip": true},
+    {"type": "window", "col": 7, "row": 7, "cols": 3, "rows": 2},
+    {"type": "window", "col": 14, "row": 7, "cols": 3, "rows": 2},
+    {"type": "poster", "col": 11, "row": 7, "variant": "mer"},
+    {"type": "walllamp", "col": 17, "row": 8},
+    {"type": "pendant", "col": 12, "row": 6, "cable": 1}
+  ]
+}

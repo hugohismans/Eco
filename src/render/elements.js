@@ -43,7 +43,7 @@ export function drawElements(P, E, world, lights, t) {
     if (!k) continue;
     const x = wd.x / SUB, y = wd.y / SUB + LEVEL_Y, w = wd.w / SUB, h = wd.h / SUB;
     const dir = Math.sign(wd.dx);
-    const n = Math.max(3, Math.round((w * h * k) / 110));
+    const n = Math.min(40, Math.max(3, Math.round((w * h * k) / 450)));
     for (let i = 0; i < n; i++) {
       const a = hash(i + 1), b = hash(i * 7 + 3);
       const len = 4 + Math.round(b * 7);
@@ -162,7 +162,7 @@ export function drawWeather(E, weather, view, t) {
     E.globalAlpha = 1;
   } else if (weather === 'wind') {
     // Sur le toit du train : l'air file vers l'arrière, en longs traits.
-    const n = Math.round((W * H) / 2600);
+    const n = Math.round((W * H) / 4200);
     E.fillStyle = C.moon1;
     for (let i = 0; i < n; i++) {
       const a = hash(i + 1), b = hash(i * 7 + 2);

@@ -268,8 +268,10 @@ export function paintWagon(level, A, Em, lights, theme, B) {
       }
     }
   }
-  // Fenêtres : rangée continue à mi-hauteur de la scène.
+  // Fenêtres : rangée continue à mi-hauteur de la scène, sauf si le niveau
+  // place lui-même les siennes (décor « window »).
   const rects = [];
+  if (level.decor.some((d) => d.type === 'window')) { theme.motionRects = rects; return; }
   const y0 = Math.round(VIEW_H * 0.3), h = 34;
   for (let x = B.x0 - (((B.x0 % 56) + 56) % 56) + 8; x < B.x1; x += 56) {
     rect(A, x - 3, y0 - 3, 46, h + 6, C.wood2);

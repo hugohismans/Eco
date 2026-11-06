@@ -1,0 +1,36 @@
+{
+  "id": "soufflet",
+  "name": "Le soufflet",
+  "theme": "toit",
+  "chapter": 5,
+  "narration": "Entre deux voitures, le vent ne garde rien de ce qu'on lui laisse. (provisoire)",
+  "duration": 13,
+  "abilities": ["walljump", "grab", "dash"],
+  "maxEchoes": 1,
+  "buttons": {"a": {"weight": 2}},
+  "doors": {"1": {"buttons": ["a"]}},
+  "winds": [{"col": 5, "row": 0, "cols": 11, "rows": 13, "dx": -10}],
+  "grid": [
+    "............................",
+    "............................",
+    "............................",
+    "............................",
+    "............................",
+    "............................",
+    "............................",
+    "#####...........############",
+    "#####...........############",
+    "#....................1.....#",
+    "#....................1.....#",
+    "#....................1...E.#",
+    "#.P....a......B......1...E.#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "window", "col": 1, "row": 9, "cols": 3, "rows": 2},
+    {"type": "window", "col": 23, "row": 9, "cols": 3, "rows": 2},
+    {"type": "catenary", "col": 0, "row": 1, "cols": 28, "poles": false},
+    {"type": "sign", "col": 22, "row": 6, "text": "VOITURE 4"},
+    {"type": "walllamp", "col": 2, "row": 10}
+  ]
+}

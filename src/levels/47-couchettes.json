@@ -1,0 +1,35 @@
+{
+  "id": "couchettes",
+  "name": "Les couchettes",
+  "theme": "wagon",
+  "chapter": 5,
+  "narration": "On se hisse les uns sur les autres, pendant que la lampe regarde ailleurs. (provisoire)",
+  "duration": 9,
+  "abilities": ["walljump", "grab"],
+  "maxEchoes": 3,
+  "lasers": [{"col": 0, "row": 7, "erase": true, "cycle": [20, 280], "phase": 160}, {"col": 0, "row": 8, "erase": true, "cycle": [20, 280], "phase": 140}, {"col": 0, "row": 9, "erase": true, "cycle": [20, 280], "phase": 120}],
+  "grid": [
+    "############################",
+    "############################",
+    "#..........................#",
+    "#..........................#",
+    "#............EE............#",
+    "#...........====...........#",
+    "#..........................#",
+    ">..........................#",
+    ">..........................#",
+    ">..........................#",
+    "#........==========........#",
+    "#..........................#",
+    "#..P.......................#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "sign", "col": 12, "row": 2, "text": "COUCHETTES"},
+    {"type": "window", "col": 3, "row": 4, "cols": 3, "rows": 2},
+    {"type": "window", "col": 21, "row": 4, "cols": 3, "rows": 2},
+    {"type": "seat", "col": 21, "row": 12, "flip": true},
+    {"type": "walllamp", "col": 7, "row": 10},
+    {"type": "seat", "col": 5, "row": 12}
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "restaurant",
+  "name": "Le wagon-restaurant",
+  "theme": "wagon",
+  "chapter": 5,
+  "narration": "Deux couverts seulement : chacun devra faire deux choses à la fois. (provisoire)",
+  "duration": 11,
+  "abilities": ["walljump", "grab", "dash"],
+  "maxEchoes": 2,
+  "buttons": {"a": {"weight": 2}},
+  "doors": {"1": {"buttons": ["j", "a"], "mode": "and"}, "2": {"buttons": ["j"], "invert": true}},
+  "grid": [
+    "############################",
+    "############################",
+    "############################",
+    "############################",
+    "############################",
+    "############################",
+    "#...............2.......1..#",
+    "#...............2.......1..#",
+    "#...............2.......1..#",
+    "#...............2.......1..#",
+    "#...............2.......1..#",
+    "#...............2.......1.E#",
+    "#.j...a....P....2..#....1.E#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "counter", "col": 1, "row": 12, "cols": 3},
+    {"type": "pendant", "col": 6, "row": 6, "cable": 2},
+    {"type": "pendant", "col": 11, "row": 6, "cable": 2},
+    {"type": "window", "col": 8, "row": 7, "cols": 2, "rows": 2},
+    {"type": "window", "col": 12, "row": 7, "cols": 2, "rows": 2},
+    {"type": "window", "col": 19, "row": 7, "cols": 3, "rows": 2},
+    {"type": "plant", "col": 22, "row": 12}
+  ]
+}

@@ -704,7 +704,7 @@ export function buildScene(level, v = { w: VIEW_W, h: VIEW_H, ox: 0, oy: 0 }) {
   const Em = emissive.getContext('2d');
   A.translate(v.ox, v.oy);
   Em.translate(v.ox, v.oy);
-  const out = { lights: [], volumes: [] };
+  const out = { lights: [], volumes: [], motion: [] };
 
   // Le fond lointain (ciel, étoiles, ville) a son propre calque émissif :
   // on n'en garde que ce qui reste visible une fois le décor et les murs posés.
@@ -735,21 +735,30 @@ export function buildScene(level, v = { w: VIEW_W, h: VIEW_H, ox: 0, oy: 0 }) {
     const mc = mask.getContext('2d');
     const img = mc.createImageData(v.w, v.h);
     const rects = theme.motion === 'windows' ? (theme.motionRects ?? []) : null;
+    const own = out.motion; // vitres posées par le décor du niveau
+    const first = own[0] ?? rects?.[0];
     const band = rects
-      ? (rects.length ? { y0: rects[0].y, y1: rects[0].y + rects[0].h } : { y0: 0, y1: 0 })
+      ? (first ? { y0: first.y, y1: first.y + first.h } : { y0: 0, y1: 0 })
       : { y0: Math.round(VIEW_H * 0.42), y1: Math.round(VIEW_H * 0.8) };
-    for (let py = 0; py < v.h; py++) {
-      const sy = py - v.oy;
-      if (rects && (sy < band.y0 || sy >= band.y1)) continue;
-      for (let pxx = 0; pxx < v.w; pxx++) {
-        const i = py * v.w + pxx;
-        if (!visible[i] || emData[i * 4 + 3] > 0) continue;
-        const sx = pxx - v.ox;
-        if (rects && !rects.some((r) => sx >= r.x && sx < r.x + r.w)) continue;
-        img.data[i * 4 + 3] = 255;
+    if (rects) {
+      for (let py = 0; py < v.h; py++) {
+        const sy = py - v.oy;
+        if (sy < band.y0 || sy >= band.y1) continue;
+        for (let pxx = 0; pxx < v.w; pxx++) {
+          const i = py * v.w + pxx;
+          if (!visible[i] || emData[i * 4 + 3] > 0) continue;
+          const sx = pxx - v.ox;
+          if (rects.some((r) => sx >= r.x && sx < r.x + r.w)) img.data[i * 4 + 3] = 255;
+        }
       }
+    } else {
+      for (let i = 0; i < visible.length; i++) if (visible[i] && !emData[i * 4 + 3]) img.data[i * 4 + 3] = 255;
     }
     mc.putImageData(img, 0, 0);
+    // Les vitres du décor : le paysage les traverse, à sa hauteur à elles.
+    mc.fillStyle = '#fff';
+    mc.translate(v.ox, v.oy);
+    for (const r of own) mc.fillRect(r.x, r.y, r.w, r.h);
     motion = { mask, band };
   }
   Em.globalCompositeOperation = 'destination-over';
