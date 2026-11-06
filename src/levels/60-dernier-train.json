@@ -1,0 +1,39 @@
+{
+  "id": "dernier-train",
+  "name": "Le dernier train",
+  "theme": "terminus",
+  "chapter": 6,
+  "narration": "Le dernier train attend. Derrière la verrière, la mer. (provisoire)",
+  "duration": null,
+  "abilities": ["walljump", "grab", "dash"],
+  "exitStyle": "train",
+  "buttons": {"a": {"weight": 2, "hold": 150}},
+  "doors": {"1": {"buttons": ["a"]}},
+  "stay": {"col": 10, "row": 11, "cols": 2},
+  "endings": {"exit": "Cette fois, je monte. (provisoire)", "stay": "Je reste. La mer est douce, la nuit. (provisoire)"},
+  "grid": [
+    "############################",
+    "#..............#...........#",
+    "#..............#...........#",
+    "#..............#...........#",
+    "#..............#...........#",
+    "#..............#...........#",
+    "#..............#...........#",
+    "#..............#...........#",
+    "#..............#...........#",
+    "#..............1.....EE....#",
+    "#..............1.....EE....#",
+    "#.P....a.......1############",
+    "############################",
+    "############################"
+  ],
+  "decor": [
+    {"type": "skylight", "col": 1, "row": 1, "cols": 13},
+    {"type": "window", "col": 3, "row": 4, "cols": 6, "rows": 3},
+    {"type": "train", "variant": "nuit", "col": 16, "row": 5, "cols": 11, "floorRow": 11, "groundRow": 12, "layer": "front"},
+    {"type": "bench", "col": 10, "row": 11},
+    {"type": "clock", "col": 12, "row": 3},
+    {"type": "poster", "col": 11, "row": 7, "variant": "mer"},
+    {"type": "lamp", "col": 13, "row": 8}
+  ]
+}

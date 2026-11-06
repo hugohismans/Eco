@@ -1,0 +1,37 @@
+{
+  "id": "maree-haute",
+  "name": "La marée haute",
+  "theme": "mer",
+  "chapter": 6,
+  "narration": "Tous ceux que j'ai été se tiennent dans la mer, pour que je passe. (provisoire)",
+  "duration": 12,
+  "abilities": ["walljump", "grab", "dash"],
+  "buttons": {"a": {"weight": 2}, "b": {"hold": 20}},
+  "doors": {"1": {"buttons": ["a"]}, "2": {"buttons": ["b"]}},
+  "lasers": [{"col": 18, "row": 6, "erase": true, "cycle": [70, 50], "phase": 10}],
+  "water": {"row": 13.25, "amp": 5, "period": 1600, "phase": 0},
+  "grid": [
+    "#........###...............#",
+    "#........###...............#",
+    "#........###...............#",
+    "#........###...............#",
+    "#........##2...............#",
+    "#........#E2...............#",
+    "#........#E2.....b<........#",
+    "#........######~.~##########",
+    "#........#.................#",
+    "#........#.................#",
+    "#........1.................#",
+    "#........1.................#",
+    "#a...P...1.................#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "lighthouse", "col": 3, "row": 1},
+    {"type": "buoy", "col": 4, "row": 12},
+    {"type": "boat", "col": 6, "row": 12},
+    {"type": "walllamp", "col": 13, "row": 9},
+    {"type": "rope", "col": 20, "row": 8, "cols": 5},
+    {"type": "sign", "col": 22, "row": 3, "text": "PHARE"}
+  ]
+}
