@@ -69,6 +69,11 @@ export class World {
     this.actors.push(this.player);
     for (const l of this.lasers) if (l.link) l.linkOn = this.linkActive(l.link);
     for (const pf of this.platforms) pf.active = this.linkActive(pf);
+    // Une porte commence dans l'état de ses boutons (une porte inversée, ouverte).
+    for (const d of this.doors) {
+      d.target = this.linkActive(d);
+      d.open = d.target ? DOOR_TICKS : 0;
+    }
     this.computeBeams();
   }
 

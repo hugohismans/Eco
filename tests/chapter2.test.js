@@ -395,7 +395,12 @@ test('14 téléphérique : le vide est gardé, même en plein dash', () => {
   bot.hold(IN_RIGHT | IN_JUMP, 12);
   bot.hold(IN_RIGHT | IN_DASH, 10);
   bot.holdUntil(IN_RIGHT, () => bot.p.dead || bot.p.onGround, 200);
-  assert.equal(bot.p.dead, true);
+  // Soit on tombe dans un faisceau, soit on reste coincé au fond, côté départ.
+  assert.ok(bot.p.dead || bot.cx < 11 * TILE, 'le vide n\u2019est pas franchi');
+  if (!bot.p.dead) {
+    bot.holdUntil(IN_RIGHT, () => bot.p.dead, 200);
+    assert.equal(bot.p.dead, true, 'vers la droite, les faisceaux du fond tuent');
+  }
 });
 
 /** Tentative 1 du téléphérique : tenir le bouton jusqu'au bout. */

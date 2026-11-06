@@ -119,6 +119,8 @@ export class Menus {
    */
   levels({ levels, chapters = {}, save, thumb, current, onPick, onBack }) {
     const list = h('ol', { class: 'ui-levels' });
+    // Les vignettes sont peintes peu à peu, après l'affichage (il y en a beaucoup).
+    const pending = [];
     let chapter = null;
     levels.forEach((lv, i) => {
       if (lv.chapter !== chapter) {
@@ -139,7 +141,11 @@ export class Menus {
         'data-autofocus': i === current,
         on: { click: () => { this.sound?.event('ui'); onPick(i); } },
       },
-      h('span', { class: 'ui-thumb' }, unlocked ? thumb(lv) : h('span', { class: 'ui-lock' }, '?')),
+      (() => {
+        const box = h('span', { class: 'ui-thumb' }, unlocked ? null : h('span', { class: 'ui-lock' }, '?'));
+        if (unlocked) pending.push([box, lv]);
+        return box;
+      })(),
       h('span', { class: 'ui-level-text' },
         h('span', { class: 'ui-level-num' }, lv.label ?? String(i + 1).padStart(2, '0')),
         h('span', { class: 'ui-level-name' }, lv.name),
@@ -154,6 +160,16 @@ export class Menus {
       endings > 0 ? h('p', { class: 'ui-note' }, `Fins découvertes : ${endings} / 2`) : null,
       h('div', { class: 'ui-actions row' }, this.button('Retour', onBack)),
     ), onBack);
+    // La pièce en cours d'abord, puis les autres, une par une.
+    pending.sort((a, b) => Math.abs(levels.indexOf(a[1]) - current) - Math.abs(levels.indexOf(b[1]) - current));
+    const screen = this.root.firstChild;
+    const next = () => {
+      if (this.root.firstChild !== screen || pending.length === 0) return;
+      const [box, lv] = pending.shift();
+      box.append(thumb(lv));
+      setTimeout(next, 0);
+    };
+    setTimeout(next, 30);
   }
 
   /** Pause, pendant une partie. */

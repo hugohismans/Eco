@@ -20,7 +20,7 @@ import {
   CLIMB_UP, CLIMB_DOWN, STAMINA_MAX, STAMINA_STILL, STAMINA_UP, STAMINA_CLIMBJUMP,
   GRAB_LOCK, LEDGE_HOP_VY, LEDGE_HOP_VX,
   DASH_SPEED, DASH_DIAG, DASH_TICKS, DASH_END_VY_UP, DASH_END_MAX_VX, CORNER_NUDGE,
-  ICE_ACCEL, SPRING_VEL,
+  ICE_ACCEL, SPRING_VEL, DASH_COOLDOWN,
 } from './constants.js';
 import { moveAxis, approach } from './physics.js';
 
@@ -101,6 +101,10 @@ export function createActor(spawn, index, tape, attempt) {
     dashing: 0,
     dashVX: 0,
     dashVY: 0,
+    /** Après un dash, un court délai avant qu'il ne se recharge au sol. */
+    dashCooldown: 0,
+    /** Côté du dernier saut au mur : on ne rebondit pas deux fois sur le même mur. */
+    lastWallSide: 0,
   };
 }
 
@@ -151,17 +155,21 @@ export function stepActor(world, a, bits) {
   a.pushing = false;
   a.sliding = false;
   if (a.grabLock > 0) a.grabLock--;
+  if (a.dashCooldown > 0 && a.dashing === 0) a.dashCooldown--;
   if (a.wallLock > 0) a.wallLock--;
 
   // 1. Porté par ce sur quoi on se tient (écho, plateforme mobile, valise).
   const g = a.ground;
   if (g && (g.dx !== 0 || g.dy !== 0)) {
-    moveAxis(world, a, 'y', g.dy);
+    // Sur un écho qui saute, on n'est pas soulevé : on ne suit que ses pas
+    // (et sa descente). Plateformes et valises, elles, portent dans tous les sens.
+    const isActor = g.kind === 'echo' || g.kind === 'player';
+    moveAxis(world, a, 'y', isActor ? Math.max(0, g.dy) : g.dy);
     moveAxis(world, a, 'x', g.dx);
   }
   if (a.onGround) {
     a.stamina = STAMINA_MAX;
-    if (can.has('dash') && a.dashing === 0) a.dashes = 1;
+    if (can.has('dash') && a.dashing === 0 && a.dashCooldown === 0) a.dashes = 1;
   }
 
   // 2. Dash : on part, puis on file tout droit pendant quelques ticks.
@@ -173,6 +181,7 @@ export function stepActor(world, a, bits) {
     a.dashVY = dy * s;
     a.dashing = DASH_TICKS;
     a.dashes--;
+    a.dashCooldown = DASH_COOLDOWN;
     a.climbing = false;
     a.jumpHeld = false;
     if (dx !== 0) a.facing = dx;
@@ -190,6 +199,7 @@ export function stepActor(world, a, bits) {
   if (can.has('grab') && grab && grabSide !== 0 && a.stamina > 0 && a.grabLock === 0) {
     if (!a.climbing) world.emit('grab', a);
     a.climbing = true;
+    a.lastWallSide = 0;
   } else {
     a.climbing = false;
   }
@@ -217,7 +227,7 @@ export function stepActor(world, a, bits) {
   else if (a.coyote > 0) a.coyote--;
   if (a.jumpBuffer > 0 && a.coyote > 0) {
     startJump(world, a, 'jump');
-  } else if (a.jumpBuffer > 0 && !a.onGround && can.has('walljump') && a.wallDir !== 0) {
+  } else if (a.jumpBuffer > 0 && !a.onGround && can.has('walljump') && a.wallDir !== 0 && a.wallDir !== a.lastWallSide) {
     wallJump(world, a, -a.wallDir);
   }
   // Saut court : relâcher la touche pendant la montée coupe l'élan
@@ -256,6 +266,7 @@ function startJump(world, a, kind) {
 /** Saut depuis un mur, vers `away` (-1 ou 1). */
 function wallJump(world, a, away) {
   startJump(world, a, 'walljump');
+  a.lastWallSide = -away;
   a.vx = away * WALLJUMP_VX;
   a.wallLock = WALLJUMP_LOCK;
   a.lockDir = -away;
@@ -328,6 +339,12 @@ function stepDash(world, a) {
       if (a.dashVY === 0 && nudge(world, a, 'y', -1, a.vx)) moveAxis(world, a, 'x', a.vx);
       else a.dashVX = 0;
     }
+  }
+  if (a.vy === 0 && a.onGround && !world.blockerFor(a, 'y', 1)) {
+    // Un dash horizontal qui quitte un rebord : on n'est plus au sol.
+    a.onGround = false;
+    a.ground = null;
+    a.coyote = 0;
   }
   if (a.vy !== 0) {
     const hit = moveAxis(world, a, 'y', a.vy);
@@ -427,6 +444,7 @@ function land(world, a, hit) {
   // Tout ce qui se déplace (écho, plateforme, valise, tapis) expose dx/dy.
   a.ground = groundOf(hit);
   a.climbing = false;
+  a.lastWallSide = 0;
   if (!wasGround) world.emit('land', a);
 }
 

@@ -57,9 +57,9 @@ export function drawElements(P, E, world, lights, t) {
   // Vitrines : un verre qui arrête les échos, pas nous.
   for (const { col, row } of cells.glass) {
     const x = col * TILE, y = LEVEL_Y + row * TILE;
-    E.globalAlpha = 0.22;
+    E.globalAlpha = 0.1;
     rect(E, x + 2, y, TILE - 4, TILE, '#9ec9ff');
-    E.globalAlpha = 0.6;
+    E.globalAlpha = 0.35;
     for (let k = 0; k < 6; k++) px(E, x + 4 + k, y + 3 + k, C.moon2);
     rect(E, x + 2, y, 1, TILE, '#c4dcf8');
     rect(E, x + TILE - 3, y, 1, TILE, '#c4dcf8');

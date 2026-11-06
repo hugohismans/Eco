@@ -136,6 +136,8 @@ export const LEDGE_HOP_VX = 20;
 export const DASH_SPEED = 64;
 export const DASH_DIAG = 45;
 export const DASH_TICKS = 10;
+/** Délai après un dash avant qu'il ne se recharge au sol (ticks). */
+export const DASH_COOLDOWN = 6;
 export const DASH_END_VY_UP = 32;
 export const DASH_END_MAX_VX = 30;
 

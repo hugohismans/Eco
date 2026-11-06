@@ -133,25 +133,22 @@ décor (`lamp`, `pendant`, `window`, `clock`, `poster`, `bench`, `canopy`, `faca
 
 ## Niveaux
 
-1. **Le quai** : marcher jusqu'à la porte du hall (tutoriel).
-2. **Le hall** : un écho reste sur le bouton pendant qu'on passe la porte.
-3. **Les guichets** : deux boutons, une porte en AND (deux échos).
-4. **La salle d'attente** : pousser la valise du porte-bagages jusqu'au bouton.
-5. **Le souterrain** : courte échelle sur un écho pour atteindre le rebord.
-6. **Le passage de la voie** : les plaques déclenchent le faisceau ; un écho
-   placé devant l'arrête pendant qu'on passe.
-7. **La cage d'escalier** (saut au mur) : un écho tient la porte du haut pendant
-   qu'on remonte la cheminée de mur en mur.
-8. **Le château d'eau** (escalade) : l'endurance ne suffit pas ; un écho resté
-   agrippé au mur sert de palier pour reprendre son souffle.
-9. **Le dépôt** (dash) : un fossé gardé par un faisceau, qu'on ne franchit qu'en
-   dash, pendant qu'un écho tient la porte.
-10. **Le dernier train** : sans chrono. Valise dans le faisceau, échos sur les
-    boutons de la barrière et du monte-charge, puis monter dans le train… ou
-    s'asseoir sur le banc. Deux fins.
+Quarante pièces en quatre chapitres, chacun avec son ambiance ; on passe de l'un à
+l'autre en train (puis en métro) :
 
-Les solutions sont jouées par un robot dans `tests/levels.test.js` (et l'on y
-vérifie aussi qu'elles ne marchent pas sans les échos).
+1. **La gare, la nuit** (1–10) : boutons, portes, valises, faisceaux, monte-charge,
+   courte échelle, puis saut au mur, escalade et dash ; on prend le train de nuit.
+2. **La gare d'altitude** (11–20) : glace, leviers, faisceaux cycliques, téléphérique.
+3. **La ville** (21–30) : ressorts, échafaudages fragiles, tapis roulants, barrières
+   lumineuses et alarmes.
+4. **Le musée** (31–40) : tableaux que seuls les échos traversent, vitrines qui
+   n'arrêtent qu'eux ; la halle des locomotives et le choix final (monter, ou rester).
+
+La conception de chaque pièce (idée, astuce, progression) est dans
+[`docs/niveaux.md`](docs/niveaux.md). Chaque solution est jouée par un robot dans
+`tests/levels.test.js` et `tests/chapter2.test.js` à `chapter4.test.js`, qui
+vérifient aussi qu'elle ne marche pas sans les échos et que les raccourcis évidents
+échouent.
 
 ## Format des niveaux
 
@@ -188,9 +185,20 @@ La grille fait 28 colonnes sur 14 lignes (format paysage) :
 | `a`…`i` | bouton pressoir (actif tant qu'un corps est dessus) |
 | `1`…`9` | porte reliée à des boutons (`and` / `or`, `invert`) |
 | `B`, `K` | valise, caisse (blocs poussables) |
-| `>` `<` `v` `^` | émetteur de faisceau mortel, tirant dans ce sens |
+| `>` `<` `v` `^` | émetteur de faisceau, tirant dans ce sens |
+| `j`…`r` | levier (bascule avec Bas ou E ; les échos aussi) |
+| `~` | glace (on glisse, on ne s'y agrippe pas) |
+| `{` `}` | tapis roulant vers la gauche / la droite |
+| `%` | échafaudage fragile (cède peu après qu'on s'y est posé) |
+| `S` | ressort |
+| `!` | tableau : seuls les échos le traversent |
+| `?` | vitrine : elle n'arrête que les échos |
 
-- `duration` en secondes, `null` pour un niveau sans chrono.
+- `duration` en secondes, `null` pour un niveau sans chrono ; `chapter` (1 à 4) ;
+  `chapterEnd: true` pour la pièce qui mène au chapitre suivant.
+- Faisceaux : `cycle: [allumé, éteint]` et `phase` (en ticks) ; `sensor: "id"` pour une
+  barrière lumineuse non mortelle, utilisable comme un bouton ; `latch: true` pour une
+  alarme qui reste déclenchée. Liens en `and`, `or` ou `xor`.
 - Un faisceau s'arrête sur le premier mur, porte, plateforme, valise ou écho ; s'il
   touche le joueur, la tentative reprend (elle ne devient pas un écho).
 - Une plateforme `hold` va vers `to` tant que ses boutons sont actifs et revient

@@ -409,8 +409,10 @@ export const DECOR = {
     }
     // Encadrement de la porte (la sortie est dessinée dedans) et marchepied.
     const dx = doorX0 + 1, dy = ex.y / SUB_PX + LEVEL_Y - 4;
-    rect(A, dx, dy, doorX1 - doorX0 - 2, ex.h / SUB_PX + 4, C.iron2);
-    rect(A, dx + 1, dy + 1, doorX1 - doorX0 - 4, 1, C.stone3);
+    if (level.exitStyle === 'train') {
+      rect(A, dx, dy, doorX1 - doorX0 - 2, ex.h / SUB_PX + 4, C.iron2);
+      rect(A, dx + 1, dy + 1, doorX1 - doorX0 - 4, 1, C.stone3);
+    }
     // Dessous de caisse dans l'ombre, bogies et roues posées sur les rails.
     rect(A, x0 + 2, floor, w, ground - floor, C.iron0);
     rect(A, x0 + 2, floor, w, 3, C.iron1);
