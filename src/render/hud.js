@@ -54,17 +54,21 @@ export function drawHud(ctx, session, ui) {
 
   // Échos : quatre emplacements, teintés selon la tentative rejouée.
   const echoes = session.world.actors.filter((a) => a.kind === 'echo');
-  for (let i = 0; i < MAX_ECHOES; i++) {
-    const x = VIEW_W - 6 - (MAX_ECHOES - i) * 10 + 2;
+  // Certaines pièces n'en gardent que quelques-uns (« maxEchoes »).
+  const slots = session.level.maxEchoes ?? MAX_ECHOES;
+  for (let i = 0; i < slots; i++) {
+    const x = VIEW_W - 6 - (slots - i) * 10 + 2;
     const y = 8;
     const e = echoes[i];
-    const col = e ? ECHO_TINTS[(e.attempt - 1) % ECHO_TINTS.length] : C.night4;
+    // Un écho effacé par la lampe du contrôleur ne laisse que son contour, pâle.
+    const erased = e && e.erased;
+    const col = erased ? C.paper1 : e ? ECHO_TINTS[(e.attempt - 1) % ECHO_TINTS.length] : C.night4;
     for (let r = 0; r < ICON.length; r++) {
       for (let c = 0; c < ICON[r].length; c++) {
         if (ICON[r][c] !== '#') continue;
         // Emplacement vide : seulement le contour.
         const edge = r === 0 || r === ICON.length - 1 || ICON[r][c - 1] !== '#' || ICON[r][c + 1] !== '#' || ICON[r - 1]?.[c] !== '#';
-        if (e || edge) px(ctx, x + c, y + r, col);
+        if ((e && !erased) || edge) px(ctx, x + c, y + r, col);
       }
     }
   }

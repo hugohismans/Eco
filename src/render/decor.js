@@ -12,7 +12,7 @@ import { TILE, SUB } from '../sim/constants.js';
 const SUB_PX = SUB;
 import { C } from './palette.js';
 import { rect, px, checker, sparse, textSprite } from './pixel.js';
-import { LEVEL_Y } from './screen.js';
+import { LEVEL_Y, VIEW_H } from './screen.js';
 import { floorRowBelow, ceilingRowAbove } from './themes.js';
 
 const cellX = (d) => d.col * TILE + (d.dx ?? 0);
@@ -567,6 +567,131 @@ Object.assign(DECOR, {
     const w = (d.cols ?? 2) * TILE;
     for (const px0 of [x + 2, x + w - 4]) { rect(A, px0, fy - 12, 2, 12, C.brass); rect(A, px0 - 1, fy - 1, 4, 1, C.brass); }
     for (let k = 0; k < w - 6; k++) px(A, x + 3 + k, fy - 10 + Math.round(Math.sin((k / (w - 6)) * Math.PI) * 3), '#a8443a');
+  },
+
+  // --- Chapitre 5 : le train de nuit ---------------------------------------------
+  /** Banquette de compartiment, velours rouge, dossier d'un côté (`flip`). */
+  seat(d, level, A) {
+    const x = cellX(d) - 3, fy = floorY(level, d.col, d.row);
+    const w = 22;
+    const bx = d.flip ? x + w - 6 : x;
+    rect(A, x, fy - 8, w, 8, C.wood1);
+    rect(A, x, fy - 8, w, 1, C.wood3);
+    rect(A, x + 1, fy - 2, 2, 2, C.iron0);
+    rect(A, x + w - 3, fy - 2, 2, 2, C.iron0);
+    rect(A, x - 1, fy - 12, w + 2, 4, '#6e2630');
+    rect(A, x - 1, fy - 12, w + 2, 1, '#9a3a40');
+    rect(A, bx, fy - 28, 6, 17, '#6e2630');
+    rect(A, bx + (d.flip ? 0 : 5), fy - 28, 1, 17, '#9a3a40');
+    rect(A, bx, fy - 28, 6, 4, C.paper3); // têtière de dentelle
+    for (let k = 0; k < 3; k++) px(A, bx + 1 + k * 2, fy - 24, C.paper2);
+  },
+
+  /** Valises (décor) : au sol, ou sur le filet à bagages (`rack`). */
+  luggage(d, level, A) {
+    const x = cellX(d) + 1;
+    const base = d.rack ? cellY(d) + 12 : floorY(level, d.col, d.row);
+    if (d.rack) {
+      rect(A, x - 4, base, 24, 1, C.brass);
+      rect(A, x - 4, base + 3, 24, 1, C.brass);
+      for (let k = 0; k < 24; k += 3) px(A, x - 4 + k, base + 1 + (k & 1), C.brass);
+      rect(A, x - 5, base - 2, 1, 7, C.brass);
+      rect(A, x + 20, base - 2, 1, 7, C.brass);
+    }
+    const v = (d.variant ?? d.col) % 3;
+    const pal = [['#5a3424', '#7a4a30'], ['#2e3e52', '#46607a'], ['#4a3a24', '#6e5634']][v];
+    rect(A, x, base - 9, 15, 9, pal[0]);
+    rect(A, x, base - 9, 15, 1, pal[1]);
+    rect(A, x + 4, base - 9, 1, 9, C.wood0);
+    rect(A, x + 10, base - 9, 1, 9, C.wood0);
+    rect(A, x + 6, base - 11, 4, 2, C.wood0);
+    px(A, x, base - 9, C.brass);
+    px(A, x + 14, base - 9, C.brass);
+    if (!d.single) {
+      rect(A, x + 2, base - 15, 10, 6, pal[1]);
+      rect(A, x + 2, base - 15, 10, 1, C.paper1);
+      rect(A, x + 6, base - 16, 2, 1, C.wood0);
+    }
+  },
+
+  /** Caténaire : câble porteur en chaînette, fil de contact, pendules. */
+  catenary(d, level, A, Em) {
+    const x0 = cellX(d), y = cellY(d) + 2;
+    const w = (d.cols ?? 6) * TILE;
+    for (let k = 0; k < w; k++) {
+      const sag = Math.round(Math.sin((k / w) * Math.PI) * 4);
+      px(A, x0 + k, y + sag, C.iron1);
+      if (k % 16 === 8) rect(A, x0 + k, y + sag, 1, 9 - sag, C.iron1);
+    }
+    rect(A, x0, y + 9, w, 1, C.iron2);
+    for (let k = 5; k < w; k += 37) px(Em, x0 + k, y + 9, '#4a5c96');
+    if (d.poles) {
+      for (const px0 of [x0, x0 + w - 2]) {
+        const fy = floorY(level, Math.floor(px0 / TILE), d.row + 1);
+        rect(A, px0, y - 3, 2, fy - y + 3, C.iron1);
+        rect(A, px0 - 3, y - 3, 8, 1, C.iron2);
+      }
+    }
+  },
+
+  // --- Chapitre 6 : la mer ------------------------------------------------------------
+  /**
+   * Phare au loin : tour à bandes, lanterne, pinceau qui balaie la nuit.
+   * Il se dresse toujours sur son îlot, à l'horizon de la mer (seule `col` compte).
+   */
+  lighthouse(d, level, A, Em, out) {
+    const cx = cellX(d) + 8, base = Math.round(VIEW_H * 0.58) + 1;
+    rect(A, cx - 14, base - 2, 28, 3, '#141a30');
+    rect(A, cx - 9, base - 4, 18, 2, '#141a30');
+    const h = (d.rows ?? 3) * TILE;
+    const top = base - h;
+    for (let y = top + 8; y < base; y++) {
+      const k = (y - top - 8) / (h - 8);
+      const half = Math.round(3 + k * 3);
+      const band = Math.floor((y - top) / 7) % 2;
+      rect(A, cx - half, y, half * 2, 1, band ? '#8a3a3a' : '#c8c0b0');
+    }
+    rect(A, cx - 7, base - 2, 14, 2, '#2a2e3c');
+    rect(A, cx - 4, top + 6, 8, 2, C.iron1);
+    rect(A, cx - 3, top + 1, 6, 5, C.ink);
+    rect(Em, cx - 2, top + 2, 4, 3, C.lamp4);
+    rect(A, cx - 3, top - 1, 6, 2, C.iron1);
+    px(A, cx, top - 2, C.iron1);
+    out.lights.push({ x: cx, y: top + 3, r: 70, color: C.lamp3, intensity: 0.7, flicker: 0, shadows: false, halo: 1.2 });
+    out.volumes.push({ type: 'sweep', x: cx, y: top + 3, len: d.reach ?? 220, spread: 9, color: C.lamp3, alpha: 0.28, speed: 0.9 });
+  },
+
+  /** Barque de pêcheur amarrée, lanterne au mât. */
+  boat(d, level, A, Em, out) {
+    const x = cellX(d), base = cellY(d) + TILE;
+    const w = (d.cols ?? 3) * TILE;
+    for (let k = 0; k < 7; k++) {
+      const inset = Math.round((k * k) / 5);
+      rect(A, x + inset, base - 7 + k, w - inset * 2, 1, k < 2 ? '#5a3a28' : '#2e2420');
+    }
+    rect(A, x, base - 8, w, 1, C.wood3);
+    rect(A, x + (w >> 1) - 6, base - 15, 12, 7, C.wood1);
+    rect(A, x + (w >> 1) - 4, base - 13, 4, 3, C.ink);
+    rect(Em, x + (w >> 1) - 4, base - 13, 4, 3, C.lamp1);
+    const mx = x + (w >> 2);
+    rect(A, mx, base - 34, 1, 26, C.wood1);
+    rect(A, mx - 2, base - 30, 3, 3, C.iron1);
+    rect(Em, mx - 1, base - 29, 1, 1, C.lamp4);
+    out.lights.push({ x: mx, y: base - 29, r: 40, color: C.lamp2, intensity: 0.55, flicker: seedCounter++, shadows: false, halo: 0.8 });
+    out.volumes.push({ type: 'reflect', x: mx, y: base + 2, w: 10, h: 12, color: C.lamp2, alpha: 0.3 });
+  },
+
+  /** Bouée de chenal : rouge et blanche, feu à éclats. */
+  buoy(d, level, A, Em, out) {
+    const cx = cellX(d) + 8, base = cellY(d) + TILE;
+    rect(A, cx - 5, base - 6, 10, 6, '#8a2a2a');
+    rect(A, cx - 5, base - 6, 10, 1, '#b84a40');
+    rect(A, cx - 3, base - 14, 6, 8, '#a83430');
+    rect(A, cx - 3, base - 11, 6, 2, C.paper3);
+    rect(A, cx - 1, base - 18, 2, 4, C.iron1);
+    rect(Em, cx - 1, base - 20, 2, 2, '#ff6a50');
+    const phase = (d.col * 0.37) % 1;
+    out.lights.push({ x: cx, y: base - 19, r: 46, color: '#ff6a50', intensity: 0.8, flicker: 0, shadows: false, halo: 1, blink: 2.4, blinkPhase: phase * 2.4 });
   },
 
   /** Locomotive à vapeur exposée (devant les murs : `"layer": "front"`). */

@@ -224,7 +224,7 @@ export class Game {
       for (const e of world.events) {
         this.sound.event(e.type, e.source);
         if (e.source === world.player) {
-          if (e.type === 'death') this.input.pad?.rumble(300, 0.9, 0.5);
+          if (e.type === 'death' || e.type === 'drown') this.input.pad?.rumble(300, 0.9, 0.5);
           else if (e.type === 'dash') this.input.pad?.rumble(60, 0.2, 0.5);
           else if (e.type === 'spring') this.input.pad?.rumble(80, 0.3, 0.3);
         }

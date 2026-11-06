@@ -245,3 +245,98 @@ export function paintHall(level, A, Em, lights, theme, B) {
     for (let x = B.x0 + (((y >> 2) & 1) ? 4 : 0); x < B.x1; x += 8) px(A, x, y, C.brick0);
   }
 }
+
+// --- Chapitres 5 et 6 -----------------------------------------------------------
+
+/**
+ * Dans une voiture : boiseries vernies, tissu crème, une rangée de fenêtres où
+ * défile la nuit (l'animation est ajoutée par le rendu, dans `theme.motionRects`).
+ */
+export function paintWagon(level, A, Em, lights, theme, B) {
+  rect(A, B.x0, B.y0, B.w, B.h, '#7a6a58');
+  sparse(A, B.x0, B.y0, B.w, B.h, '#6a5a4a');
+  // Bandeau de boiserie en bas, filet doré.
+  const R = cellRange(B);
+  for (let r = R.r0; r < R.r1; r++) {
+    for (let c = R.c0; c < R.c1; c++) {
+      if (solidAt(level, c, r)) continue;
+      const x = c * TILE, y = LEVEL_Y + r * TILE;
+      if (solidAt(level, c, r + 1)) {
+        rect(A, x, y, TILE, TILE, C.wood1);
+        rect(A, x, y, TILE, 1, C.brass);
+        rect(A, x + 2, y + 4, 12, 9, C.wood0);
+      }
+    }
+  }
+  // Fenêtres : rangée continue à mi-hauteur de la scène.
+  const rects = [];
+  const y0 = Math.round(VIEW_H * 0.3), h = 34;
+  for (let x = B.x0 - (((B.x0 % 56) + 56) % 56) + 8; x < B.x1; x += 56) {
+    rect(A, x - 3, y0 - 3, 46, h + 6, C.wood2);
+    rect(A, x - 3, y0 - 3, 46, 1, C.wood3);
+    rect(A, x, y0, 40, h, C.ink);
+    rect(Em, x, y0, 40, h, C.night1);
+    rect(Em, x, y0 + h - 8, 40, 8, '#0c1020');
+    rect(A, x + 19, y0, 2, h, C.wood1);
+    rects.push({ x, y: y0, w: 40, h });
+  }
+  theme.motionRects = rects;
+}
+
+/** Sur le toit du train : la nuit, des collines qui filent (animées), les caténaires. */
+export function paintTrainRoof(level, A, Em, lights, theme, B) {
+  const r = rng(61);
+  skyBands(A, B, [C.night2, C.night3, C.night4, '#46578f']);
+  stars(Em, B, r, VIEW_H * 0.55, 70);
+  moon(Em, lights, Math.round(VIEW_W * 0.2), Math.round(VIEW_H * 0.16), 8);
+  theme.motionRects = null; // tout le ciel visible
+}
+
+/** La côte : mer, lune, chemin de lune sur l'eau, horizon. */
+export function paintSea(level, A, Em, lights, theme, B) {
+  const r = rng(71);
+  skyBands(A, B, [C.night3, C.night4, '#4a5a94', '#6a6ea8']);
+  stars(Em, B, r, VIEW_H * 0.5, 80);
+  const mx = Math.round(VIEW_W * 0.7);
+  moon(Em, lights, mx, Math.round(VIEW_H * 0.18), 10);
+  const horizon = Math.round(VIEW_H * 0.58);
+  rect(A, B.x0, horizon, B.w, B.y1 - horizon, '#1c2a5a');
+  for (let y = horizon; y < B.y1; y += 3) {
+    const off = (y * 7) % 11;
+    for (let x = B.x0 + off; x < B.x1; x += 11) rect(A, x, y, 4, 1, '#26366c');
+  }
+  // Chemin de lune : reflets qui s'élargissent vers nous.
+  for (let y = horizon + 1; y < B.y1; y += 2) {
+    const k = (y - horizon) / (VIEW_H - horizon);
+    const w = 4 + k * 40;
+    for (let i = 0; i < 2; i++) {
+      const x = mx - w / 2 + ((y * 13 + i * 29) % Math.max(1, Math.round(w)));
+      rect(Em, x, y, 2 + Math.round(k * 3), 1, k < 0.25 ? C.moon0 : k < 0.6 ? '#5a6ea8' : '#3a4a84');
+    }
+  }
+  lights.push({ x: mx, y: horizon + 30, r: 120, color: C.moon0, intensity: 0.25, flicker: 0, shadows: false, halo: 0 });
+  theme.motionRects = null;
+}
+
+/** Le terminus : verrière de fer, et derrière les grandes baies, la mer. */
+export function paintTerminus(level, A, Em, lights, theme, B) {
+  paintHall(level, A, Em, lights, theme, B);
+  const top = Math.round(VIEW_H * 0.45);
+  // Grandes baies cintrées sur la mer.
+  for (let x = B.x0 - (((B.x0 % 112) + 112) % 112) + 20; x < B.x1; x += 112) {
+    const y = top + 8, w = 70, h = 60;
+    rect(A, x - 3, y - 3, w + 6, h + 6, C.stone2);
+    rect(A, x, y, w, h, C.ink);
+    // Le verre ne s'éclaire que par l'émissif : ciel de nuit, mer sombre, chemin de lune.
+    rect(Em, x, y, w, h * 0.55, C.night1);
+    for (let k = 0; k < 9; k++) px(Em, x + ((k * 23 + 7) % w), y + 3 + ((k * 11) % 26), C.moon0);
+    rect(Em, x, y + h * 0.55, w, h * 0.45, '#0b1330');
+    rect(Em, x, y + h * 0.55, w, 1, '#2a3a70');
+    for (let k = 0; k < 7; k++) rect(Em, x + 44 - k + ((k * 5) % 3), y + h * 0.55 + 3 + k * 4, 3 + k, 1, k < 3 ? C.moon0 : '#5a6ea8');
+    // Meneaux : ils masquent aussi la lueur du verre.
+    for (const [ctx, col] of [[A, C.iron1], [Em, '#000']]) {
+      rect(ctx, x + w / 2 - 1, y, 2, h, col);
+      rect(ctx, x, y + 20, w, 1, col);
+    }
+  }
+}

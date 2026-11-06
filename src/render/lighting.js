@@ -24,6 +24,13 @@ export function flicker(seed, t) {
   return f;
 }
 
+/** Feu à éclats (bouée, phare) : `blink` = période en secondes ; 1 allumé, 0 éteint. */
+function blinkOf(L, t) {
+  if (!L.blink) return 1;
+  const k = ((t + (L.blinkPhase ?? 0)) / L.blink) % 1;
+  return k < 0.18 ? 1 : k < 0.26 ? (0.26 - k) / 0.08 : 0;
+}
+
 export class Lighting {
   constructor() {
     this.temp = makeCanvas(256, 256);
@@ -57,7 +64,7 @@ export class Lighting {
     ctx.setTransform(1, 0, 0, 1, ox, oy);
     ctx.globalCompositeOperation = 'lighter';
     for (const L of lights) {
-      const I = L.intensity * flicker(L.flicker, t);
+      const I = L.intensity * flicker(L.flicker, t) * blinkOf(L, t);
       if (I <= 0.01) continue;
       const near = L.shadows ? occluders.filter((o) => intersectsCircle(o, L.x, L.y, L.r)) : [];
       if (near.length === 0) {
@@ -130,6 +137,23 @@ export class Lighting {
         ctx.fillStyle = g;
         if (horiz) ctx.fillRect(Math.min(v.x0, v.x1), v.y0 - half, Math.abs(v.x1 - v.x0), half * 2);
         else ctx.fillRect(v.x0 - half, Math.min(v.y0, v.y1), half * 2, Math.abs(v.y1 - v.y0));
+      } else if (v.type === 'sweep') {
+        // Faisceau tournant d'un phare : un pinceau qui balaie l'horizon.
+        const c = Math.cos(t * (v.speed ?? 0.9));
+        const len = v.len * c;
+        if (Math.abs(len) > 4) {
+          const g = ctx.createLinearGradient(v.x, 0, v.x + len, 0);
+          g.addColorStop(0, rgba(v.color, v.alpha * Math.abs(c)));
+          g.addColorStop(1, rgba(v.color, 0));
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.moveTo(v.x, v.y - 1);
+          ctx.lineTo(v.x + len, v.y - v.spread);
+          ctx.lineTo(v.x + len, v.y + v.spread);
+          ctx.lineTo(v.x, v.y + 1);
+          ctx.closePath();
+          ctx.fill();
+        }
       } else if (v.type === 'rays') {
         // Rayons qui s'échappent d'une porte entrouverte.
         for (let i = 0; i < 5; i++) {
@@ -152,7 +176,7 @@ export class Lighting {
     // Halos autour des sources (le « glow » moderne).
     for (const L of lights) {
       if (!L.halo) continue;
-      const I = L.intensity * flicker(L.flicker, t) * L.halo;
+      const I = L.intensity * flicker(L.flicker, t) * blinkOf(L, t) * L.halo;
       const r = L.r * 0.32;
       const g = ctx.createRadialGradient(L.x, L.y, 0, L.x, L.y, r);
       g.addColorStop(0, rgba(L.color, 0.55 * I));

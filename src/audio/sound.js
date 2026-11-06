@@ -29,6 +29,12 @@ const AMBIENCE = {
   musee: { hum: 0.01, wind: 0.005, reverb: 0.55 },
   reserve: { hum: 0.025, wind: 0.008, reverb: 0.35 },
   halle: { hum: 0.008, wind: 0.02, reverb: 0.6 },
+  // Chapitre 5 : le train roule (bourdonnement grave, claquement des rails).
+  wagon: { hum: 0.026, wind: 0.025, reverb: 0.1, rails: 0.09 },
+  toit: { hum: 0.012, wind: 0.11, reverb: 0.05, rails: 0.06 },
+  // Chapitre 6 : la mer.
+  mer: { hum: 0.002, wind: 0.09, reverb: 0.16 },
+  terminus: { hum: 0.012, wind: 0.04, reverb: 0.5 },
 };
 
 export class Sound {
@@ -96,6 +102,7 @@ export class Sound {
     this.humGain.gain.setTargetAtTime(a.hum, t, 0.8);
     this.windGain.gain.setTargetAtTime(a.wind, t, 0.8);
     this.wet.gain.setTargetAtTime(a.reverb, t, 0.5);
+    this.rails = a.rails ?? 0;
   }
 
   // --- Ambiance -----------------------------------------------------------
@@ -193,6 +200,14 @@ export class Sound {
     this.pushGain.gain.setTargetAtTime(pushing ? 0.09 : sliding ? 0.05 : 0, t, 0.04);
     this.liftGain.gain.setTargetAtTime(lift ? 0.05 : 0, t, 0.1);
     this.laserGain.gain.setTargetAtTime(laser ? 0.022 : 0, t, 0.15);
+    // Dans le train : le double claquement des joints de rail, régulier.
+    if (this.rails) {
+      if (!this.nextRail || this.nextRail < t - 1) this.nextRail = t + 0.2;
+      if (t > this.nextRail) {
+        this.nextRail += 1.15;
+        for (const d of [0, 0.13]) this.noise({ type: 'lowpass', f: 240, dur: 0.07, gain: this.rails, delay: d, wet: 0.05 });
+      }
+    }
     // Carillon lointain, de temps en temps (réglé sur l'horloge audio).
     if (!this.nextChime) this.nextChime = t + 25 + Math.random() * 30;
     if (t > this.nextChime) {
@@ -303,6 +318,15 @@ export class Sound {
         break;
       case 'sensor-on':
         this.tone({ type: 'sine', f: 1320, dur: 0.05, gain: 0.025 * v, wet: 0.2 });
+        break;
+      case 'erase':
+        // Un écho pris dans la lampe : un souffle clair qui s'éteint.
+        this.tone({ type: 'sine', f: 1560, to: 2400, dur: 0.35, gain: 0.04, wet: 0.7 });
+        this.noise({ f: 4000, to: 9000, q: 1, dur: 0.4, gain: 0.03, wet: 0.6 });
+        break;
+      case 'drown':
+        this.noise({ type: 'lowpass', f: 900, to: 200, dur: 0.6, gain: 0.14, wet: 0.4 });
+        this.tone({ type: 'sine', f: 300, to: 120, dur: 0.5, gain: 0.05, wet: 0.4 });
         break;
       case 'land':
         this.noise({ type: 'lowpass', f: 420, dur: 0.06, gain: 0.09 * v, wet: 0.1 });

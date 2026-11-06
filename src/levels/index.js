@@ -12,4 +12,6 @@ export const CHAPTERS = {
   2: { title: 'La gare d’altitude' },
   3: { title: 'La ville' },
   4: { title: 'Le musée' },
+  5: { title: 'Le train de nuit' },
+  6: { title: 'La mer' },
 };

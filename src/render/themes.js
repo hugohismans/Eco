@@ -12,6 +12,7 @@ import {
 } from '../sim/constants.js';
 import {
   paintMountains, paintChalet, paintCity, paintStreet, paintMuseum, paintStorage, paintHall,
+  paintWagon, paintTrainRoof, paintSea, paintTerminus,
 } from './backdrops.js';
 import { C } from './palette.js';
 import { rect, px, checker, sparse, rng } from './pixel.js';
@@ -161,6 +162,28 @@ Object.assign(THEMES, {
   halle: {
     ambient: '#55609c', fog: { color: '#c4d2f0', alpha: 0.08 }, tiles: 'stone', wet: true,
     weather: null, backdrop: paintHall,
+  },
+});
+
+Object.assign(THEMES, {
+  /** Dans le train : boiseries, banquettes, la nuit qui défile aux fenêtres. */
+  wagon: {
+    ambient: '#4c4880', fog: null, tiles: 'wood', wet: false, weather: null, motion: 'windows',
+    backdrop: paintWagon,
+  },
+  /** Sur le toit du train : le vent, la nuit qui file. */
+  toit: {
+    ambient: '#56619f', fog: { color: '#8fa6d8', alpha: 0.1 }, tiles: 'roof', wet: false,
+    weather: 'wind', motion: 'sky', backdrop: paintTrainRoof,
+  },
+  /** La côte : la mer, la lune, les rochers. */
+  mer: {
+    ambient: '#5a66a6', fog: { color: '#c4d2f0', alpha: 0.12 }, tiles: 'rock', wet: true,
+    weather: null, backdrop: paintSea,
+  },
+  /** Le terminus au bord de la mer : verrière, grandes baies. */
+  terminus: {
+    ambient: '#55609c', fog: null, tiles: 'stone', wet: true, weather: null, backdrop: paintTerminus,
   },
 });
 
@@ -345,6 +368,7 @@ export function paintTiles(level, theme, A, B = SCENE) {
         else if (style === 'wood') paintWood(level, A, c, r, x, y);
         else if (style === 'roof') paintRoof(level, A, c, r, x, y);
         else if (style === 'marble') paintMarble(level, A, c, r, x, y);
+        else if (style === 'rock') paintRock(level, A, c, r, x, y);
         else paintBrick(level, A, c, r, x, y);
       } else if (t === T_ONEWAY) {
         paintPlank(A, x, y);
@@ -530,6 +554,19 @@ function paintRoof(level, A, c, r, x, y) {
   if (!solidAt(level, c, r - 1)) { rect(A, x, y, TILE, 2, '#8a92ac'); rect(A, x, y + 2, TILE, 1, '#2e3244'); }
   if (!solidAt(level, c - 1, r)) rect(A, x, y, 1, TILE, '#2e3244');
   if (!solidAt(level, c + 1, r)) rect(A, x + TILE - 1, y, 1, TILE, '#2e3244');
+}
+
+/** Rocher de bord de mer : pierre sombre, arêtes claires, un peu d'algue. */
+function paintRock(level, A, c, r, x, y) {
+  rect(A, x, y, TILE, TILE, '#2e3446');
+  for (let k = 0; k < 6; k++) px(A, x + ((c * 5 + k * 7) % TILE), y + ((r * 3 + k * 5) % TILE), '#3e465c');
+  rect(A, x + ((c * 3) % 9), y + 7, 5, 1, '#232838');
+  if (!solidAt(level, c, r - 1)) {
+    rect(A, x, y, TILE, 2, '#5a6480');
+    for (let k = 1; k < TILE; k += 5) px(A, x + k, y + 2, '#3a5a46');
+  }
+  if (!solidAt(level, c - 1, r)) rect(A, x, y, 1, TILE, '#1c2030');
+  if (!solidAt(level, c + 1, r)) rect(A, x + TILE - 1, y, 1, TILE, '#1c2030');
 }
 
 function paintMarble(level, A, c, r, x, y) {

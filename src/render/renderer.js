@@ -22,12 +22,14 @@ import { themeOf, paintTiles, floorRowBelow } from './themes.js';
 import { paintDecor } from './decor.js';
 import { Lighting } from './lighting.js';
 import { drawHud } from './hud.js';
-import { drawElements, drawWeather } from './elements.js';
+import { drawElements, drawWeather, drawWater, drawMotion } from './elements.js';
 import { sprite, rimSprite, outlineSprite, WALK_CYCLE, SPRITE_DX } from './sprites.js';
 
 const TRAIL_LEN = 14;
 /** Couleur des barrières lumineuses (capteurs non mortels). */
 const SENSOR = '#6ad2ff';
+/** Lampe du contrôleur : une lumière pâle, qui efface les échos. */
+const ERASER = '#fff0c0';
 const TRAIL_EVERY = 2; // ticks entre deux échantillons de traînée
 
 export class Renderer {
@@ -102,6 +104,7 @@ export class Renderer {
     E.drawImage(scene.emissive, 0, 0);
     E.setTransform(1, 0, 0, 1, v.ox, v.oy);
     this.drawStars(E, scene, t);
+    if (scene.motion) drawMotion(P, E, scene.motion, v, t, this.motionBufs ??= {});
 
     const lights = [...scene.lights];
     const volumes = [...scene.volumes];
@@ -115,6 +118,7 @@ export class Renderer {
     for (const b of world.blocks) this.drawBlock(P, E, b, alpha, occluders);
     this.drawLasers(P, E, world, lights, volumes, t);
     this.drawActors(P, E, world, alpha, lights, occluders, t);
+    drawWater(P, E, world, this.view, lights, t);
     this.drawStayHint(E, world, t);
     this.drawDust(E, volumes, t);
     drawWeather(E, scene.theme.weather, this.view, t);
@@ -236,6 +240,7 @@ export class Renderer {
     for (const a of world.actors) {
       if (a.kind !== 'echo') continue;
       const tint = ECHO_TINTS[(a.attempt - 1) % ECHO_TINTS.length];
+      if (a.dead) { this.drawErased(E, a, alpha, lights, world); continue; }
       const trail = this.trails.get(a) ?? [];
       trail.forEach((p, i) => {
         E.globalAlpha = 0.035 + (0.16 * i) / TRAIL_LEN;
@@ -336,6 +341,29 @@ export class Renderer {
     if (!p.dead || !s) return 0;
     if (s.deadAt === undefined) s.deadAt = world.tick;
     return Math.min(1, (world.tick - s.deadAt) / 45);
+  }
+
+  /** Un écho pris dans la lampe du contrôleur : il blanchit et s'éparpille. */
+  drawErased(E, a, alpha, lights, world) {
+    const s = this.anim.get(a);
+    if (!s) return;
+    if (s.deadAt === undefined) s.deadAt = world.tick;
+    const k = Math.min(1, (world.tick - s.deadAt) / 40);
+    if (k >= 1) return;
+    const { x, y } = lerpPos(a, alpha);
+    const sx = x + SPRITE_DX, sy = y + LEVEL_Y;
+    const frame = this.frameOf(a, world.tick);
+    E.globalAlpha = Math.max(0, 0.8 - k * 1.4);
+    E.drawImage(sprite(frame, a.facing, ERASER), sx, sy);
+    for (let i = 0; i < 20; i++) {
+      const seed = ((i * 61) % 89) / 89;
+      const px0 = sx + 1 + ((i * 7) % 10), py0 = sy + 2 + ((i * 11) % 19);
+      const spread = k * (8 + seed * 18);
+      E.globalAlpha = (1 - k) * (0.4 + 0.6 * seed);
+      px(E, Math.round(px0 + Math.cos(seed * 40) * spread), Math.round(py0 + Math.sin(seed * 40) * spread * 0.6 - k * 6), ERASER);
+    }
+    E.globalAlpha = 1;
+    lights.push({ x: sx + 6, y: sy + 11, r: 36, color: ERASER, intensity: 0.6 * (1 - k), flicker: 0, shadows: false, halo: 0.5 });
   }
 
   /** Le joueur touché par un faisceau se défait en braises qui montent. */
@@ -441,8 +469,9 @@ export class Renderer {
       const lx = cx + l.dx * 5, ly = cy + l.dy * 5;
       rect(P, lx - 2, ly - 2, 4, 4, C.iron0);
       // Barrière lumineuse (capteur) : bleue ; alarme déclenchée : rouge qui clignote.
-      const col = l.sensor ? (l.latched ? C.signalRed : SENSOR) : C.signalRed;
-      const dim = l.sensor ? '#103040' : '#401010';
+      const col = l.erase ? ERASER : l.sensor ? (l.latched ? C.signalRed : SENSOR) : C.signalRed;
+      const dim = l.erase ? '#3a3420' : l.sensor ? '#103040' : '#401010';
+      const core = l.erase ? '#ffffff' : '#ffd0c8';
       // Faisceau cyclique : la lentille clignote juste avant de s'allumer.
       let warn = false;
       if (l.cycle && !l.on && l.linkOn) {
@@ -463,12 +492,12 @@ export class Renderer {
         const x0 = Math.min(ox, ex), len = Math.abs(ex - ox);
         E.globalAlpha = shimmer * (l.sensor ? 0.7 : 1);
         rect(E, x0, oy - 1, len, l.sensor ? 1 : 2, col);
-        if (!l.sensor) rect(E, x0, oy, len, 1, '#ffd0c8');
+        if (!l.sensor) rect(E, x0, oy, len, 1, core);
       } else {
         const y0 = Math.min(oy, ey), len = Math.abs(ey - oy);
         E.globalAlpha = shimmer * (l.sensor ? 0.7 : 1);
         rect(E, ox - 1, y0, l.sensor ? 1 : 2, len, col);
-        if (!l.sensor) rect(E, ox, y0, 1, len, '#ffd0c8');
+        if (!l.sensor) rect(E, ox, y0, 1, len, core);
       }
       E.globalAlpha = 1;
       // Étincelles au point d'impact.
@@ -531,6 +560,21 @@ export class Renderer {
     // Voyant : rouge au repos, vert quand on appuie.
     const col = b.pressed ? C.signalGreen : C.signalRed;
     rect(E, x + (w >> 1) - 1, bottom - 2, 2, 1, col);
+    // Plaque lourde : une rangée de voyants, un par corps qu'il faut y poser.
+    if (b.weight > 1) {
+      rect(P, x - 1, bottom - 2 - plateH - 2, w + 2, 1, C.iron0);
+      for (let k = 0; k < b.weight; k++) {
+        const lx = x + (w >> 1) - b.weight * 2 + 1 + k * 4;
+        rect(P, lx - 1, bottom - 9, 4, 3, C.iron1);
+        rect(E, lx, bottom - 8, 2, 1, k < b.count ? C.lamp3 : '#2a2418');
+      }
+    }
+    // Minuterie : une jauge qui se vide quand on quitte la plaque.
+    if (b.hold > 0) {
+      const g = Math.round(((w - 2) * (b.count >= b.weight ? b.hold : b.timer)) / b.hold);
+      rect(P, x + 1, bottom, w - 2, 1, C.iron0);
+      if (g > 0) rect(E, x + 1, bottom, g, 1, b.timer < 30 && b.count < b.weight ? C.signalRed : C.lamp2);
+    }
     lights.push({ x: x + w / 2, y: bottom - 3, r: b.pressed ? 26 : 14, color: col, intensity: b.pressed ? 0.6 : 0.3, flicker: 0, shadows: false, halo: 0.6 });
   }
 
@@ -681,6 +725,33 @@ export function buildScene(level, v = { w: VIEW_W, h: VIEW_H, ox: 0, oy: 0 }) {
     if (!visible[i]) farImg.data[k + 3] = 0;
   }
   farCtx.putImageData(farImg, 0, 0);
+
+  // Le train roule : là où l'on voit dehors (vitres du wagon, ou tout le ciel
+  // sur le toit), un paysage défilera à chaque image. On en garde le masque.
+  let motion = null;
+  if (theme.motion) {
+    const emData = Em.getImageData(0, 0, v.w, v.h).data;
+    const mask = makeCanvas(v.w, v.h);
+    const mc = mask.getContext('2d');
+    const img = mc.createImageData(v.w, v.h);
+    const rects = theme.motion === 'windows' ? (theme.motionRects ?? []) : null;
+    const band = rects
+      ? (rects.length ? { y0: rects[0].y, y1: rects[0].y + rects[0].h } : { y0: 0, y1: 0 })
+      : { y0: Math.round(VIEW_H * 0.42), y1: Math.round(VIEW_H * 0.8) };
+    for (let py = 0; py < v.h; py++) {
+      const sy = py - v.oy;
+      if (rects && (sy < band.y0 || sy >= band.y1)) continue;
+      for (let pxx = 0; pxx < v.w; pxx++) {
+        const i = py * v.w + pxx;
+        if (!visible[i] || emData[i * 4 + 3] > 0) continue;
+        const sx = pxx - v.ox;
+        if (rects && !rects.some((r) => sx >= r.x && sx < r.x + r.w)) continue;
+        img.data[i * 4 + 3] = 255;
+      }
+    }
+    mc.putImageData(img, 0, 0);
+    motion = { mask, band };
+  }
   Em.globalCompositeOperation = 'destination-over';
   Em.setTransform(1, 0, 0, 1, 0, 0);
   Em.drawImage(far, 0, 0);
@@ -713,7 +784,7 @@ export function buildScene(level, v = { w: VIEW_W, h: VIEW_H, ox: 0, oy: 0 }) {
   for (let c = 0; c < level.width; c++) floorSum += floorRowBelow(level, c, 0);
   const fog = theme.fog ? { ...theme.fog, floorY: LEVEL_Y + (floorSum / level.width) * TILE } : null;
 
-  return { level, theme, albedo, emissive, lights: out.lights, volumes: out.volumes, twinkles, fog };
+  return { level, theme, albedo, emissive, lights: out.lights, volumes: out.volumes, twinkles, fog, motion };
 }
 
 function buildVignette(w, h) {
