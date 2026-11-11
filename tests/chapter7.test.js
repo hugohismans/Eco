@@ -656,6 +656,15 @@ function wheelRecord(bot, at) {
   bot.untilTick(at + 230, R);
   bot.s.replay();
 }
+/** 67 : monter dans notre nacelle (elle part dès le début), puis jusque devant la porte. */
+function rideMine(bot) {
+  bot.hold(R | J, 14);
+  bot.holdUntil(R, () => bot.p.onGround, 60);
+  assert.equal(bot.p.ground.kind, 'platform', 'dans notre nacelle');
+  bot.holdUntil(R, () => bot.feet === rowTop(7) && bot.p.ground.kind !== 'platform', 300);
+  bot.untilBlocked(R);
+  assert.equal(bot.p.x + bot.p.w, colLeft(9), 'en haut, devant la porte');
+}
 
 test('67 grande roue : on saute quand SA nacelle est en bas ; puis on prend la nôtre', () => {
   const s = new Session(load(F[67]));
@@ -664,25 +673,40 @@ test('67 grande roue : on saute quand SA nacelle est en bas ; puis on prend la n
   assert.ok(mine.y > his.y, 'au départ, la nôtre est en bas, la sienne en haut');
   // On attend que la sienne soit arrivée en bas : la nôtre est alors en haut.
   bot.holdUntil(0, () => s.world.platforms[1].t === s.world.platforms[1].len, 300);
-  assert.equal(s.world.platforms[0].y, rowTop(8), 'la nôtre est en haut');
+  assert.equal(s.world.platforms[0].y, rowTop(6), 'la nôtre est en haut');
   const at = s.world.tick + 10;
-  wheelRecord(bot, at);
-  // Tentative suivante : le reflet monte dans sa nacelle ; nous, dans la nôtre, tout de suite.
-  const refl = s.world.actors[0];
+  bot.untilTick(at);
   bot.hold(R | J, 14);
   bot.holdUntil(R, () => bot.p.onGround, 60);
-  assert.equal(bot.p.ground.kind, 'platform', 'dans notre nacelle');
-  bot.holdUntil(R, () => bot.feet === rowTop(9) && bot.p.ground.kind !== 'platform', 300);
-  bot.untilBlocked(R);
-  assert.equal(bot.p.x + bot.p.w, colLeft(9), 'en haut, devant la porte');
+  assert.equal(bot.feet, rowTop(13), 'nous, on a sauté dans le vide : au fond de notre puits, sans mal');
+  bot.untilTick(at + 230, R);
+  s.replay();
+  // Tentative suivante : le reflet monte dans sa nacelle ; nous, dans la nôtre, tout de suite.
+  const refl = s.world.actors[0];
+  rideMine(bot);
   assert.equal(door(s, '1').open, 0, 'elle attend le reflet');
   let rode = false;
   bot.holdUntil(R, () => { rode ||= refl.ground?.kind === 'platform'; return bot.done; }, 600);
   assert.equal(rode, true, 'le reflet a pris sa nacelle');
   assert.equal(s.outcome, 'exit');
-  assert.equal(refl.y + refl.h, rowTop(9));
+  assert.equal(refl.y + refl.h, rowTop(7));
   assert.equal(button(s, 'a').pressed, true);
   assert.ok(inTime(s));
+});
+
+test('67 grande roue : sauter, rester immobile le temps du trajet, puis faire le pas de sortie', () => {
+  for (const stepAt of [195, 220, 245]) {
+    const s = new Session(load(F[67]));
+    const bot = new Bot(s);
+    bot.untilTick(100);
+    bot.hold(R | J, 14);
+    bot.holdUntil(R, () => bot.p.onGround, 60);
+    bot.untilTick(stepAt); // sa nacelle monte, s'arrête en haut (ticks 213 à 253)
+    bot.hold(R, 20);
+    s.replay();
+    rideMine(bot);
+    assert.equal(bot.exit(R, 400), 'exit', `pas de sortie au tick ${stepAt}`);
+  }
 });
 
 test('67 grande roue : une bonne seconde pour sauter ; quand NOTRE nacelle est là, le reflet rate la sienne', () => {
@@ -693,8 +717,8 @@ test('67 grande roue : une bonne seconde pour sauter ; quand NOTRE nacelle est l
     bot.untilTick(at + 240);
     return [button(s, 'a').pressed, s.world.actors[0]];
   };
-  for (const at of [50, 70, 90, 110, 125]) assert.equal(pressed(at)[0], true, `saut au tick ${at}`);
-  for (const at of [0, 15, 150, 190]) {
+  for (const at of [45, 60, 80, 100, 120, 130]) assert.equal(pressed(at)[0], true, `saut au tick ${at}`);
+  for (const at of [0, 15, 30, 150, 190]) {
     const [ok, refl] = pressed(at);
     assert.equal(ok, false, `saut au tick ${at}`);
     assert.equal(refl.y + refl.h, rowTop(13), 'le reflet est au fond de son puits');
@@ -703,20 +727,23 @@ test('67 grande roue : une bonne seconde pour sauter ; quand NOTRE nacelle est l
   const s = new Session(load(F[67]));
   const bot = new Bot(s);
   wheelRecord(bot, 0);
-  bot.hold(R | J, 14);
-  bot.holdUntil(R, () => bot.feet === rowTop(9) && bot.p.ground.kind !== 'platform', 300);
-  bot.untilBlocked(R);
-  assert.equal(bot.p.x + bot.p.w, colLeft(9), 'nous, en haut, devant la porte');
+  rideMine(bot);
   bot.idle(200);
   assert.equal(door(s, '1').open, 0);
   assert.equal(s.state, 'playing');
+  // Ce reflet raté, au fond de son puits, ne gêne pas la nacelle : le suivant peut la prendre.
+  s.replay();
+  wheelRecord(bot, 100);
+  assert.equal(s.world.actors.length, 4, 'trois reflets, dont deux ratés');
+  rideMine(bot);
+  assert.equal(bot.exit(R, 400), 'exit');
 });
 
 test('67 grande roue : sans nacelle, personne ne monte', () => {
   // Les nacelles arrêtées où elles sont : la nôtre en bas, la sienne en haut.
   const def = raw(F[67]);
   const lv = parseLevel({ ...def, duration: null, platforms: def.platforms.map((p) => ({ ...p, invert: false })) });
-  const up = (w) => w.player.y + w.player.h <= rowTop(9) && w.player.onGround && w.player.ground.kind !== 'platform';
+  const up = (w) => w.player.y + w.player.h <= rowTop(7) && w.player.onGround && w.player.ground.kind !== 'platform';
   const s = new Session(lv);
   const bot = new Bot(s);
   assert.equal(anyLeap(s.world, up), false, 'depuis le sol');
@@ -726,14 +753,23 @@ test('67 grande roue : sans nacelle, personne ne monte', () => {
   bot.untilBlocked(R);
   assert.equal(anyLeap(s.world, up), false, 'depuis la nacelle restée en bas');
   // Et l'on ne passe pas sous les kiosques : les puits sont fermés par un mur.
-  for (const r of [9, 10, 11, 12]) assert.ok(isSolid(lv, 8, r) && isSolid(lv, 19, r));
+  for (const r of [7, 8, 9, 10, 11, 12]) assert.ok(isSolid(lv, 8, r) && isSolid(lv, 19, r));
+  // Du fond du puits, on ressort d'un saut (rien n'est perdu), mais pas plus haut.
+  const u = new Session(loadWith(F[67], { duration: null }));
+  const b3 = new Bot(u);
+  b3.untilTick(100);
+  b3.hold(R | J, 14);
+  b3.holdUntil(R, () => b3.p.onGround, 60);
+  assert.equal(b3.feet, rowTop(13));
+  b3.jump(-1);
+  assert.equal(b3.feet, rowTop(11), 'ressorti du puits');
   // De la nacelle, même tout en haut, on ne saute pas sur le toit du kiosque (le fronton l'interdit).
   const t = new Session(loadWith(F[67], { duration: null }));
   const b2 = new Bot(t);
   b2.hold(R | J, 14);
   b2.holdUntil(0, () => b2.p.onGround, 60);
   assert.equal(b2.p.ground.kind, 'platform');
-  const onRoof = (w) => w.player.onGround && w.player.ground.kind !== 'platform' && w.player.y + w.player.h <= rowTop(6);
+  const onRoof = (w) => w.player.onGround && w.player.ground.kind !== 'platform' && w.player.y + w.player.h <= rowTop(4);
   for (let k = 0; k < 14; k++) {
     b2.idle(10);
     if (b2.p.ground?.kind !== 'platform') break;
