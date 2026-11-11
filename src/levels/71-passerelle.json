@@ -28,6 +28,6 @@
     {"type": "sign", "col": 6, "row": 4, "text": "COUPOLE"},
     {"type": "telescope", "col": 22, "row": 5},
     {"type": "bench", "col": 1, "row": 5},
-    {"type": "lamp", "col": 24, "row": 5}
+    {"type": "lamp", "col": 26, "row": 5}
   ]
 }

@@ -4,12 +4,12 @@
   "theme": "coupole",
   "chapter": 8,
   "narration": "Dans la chambre noire, chacun de nous est une ombre utile. (provisoire)",
-  "duration": 12,
+  "duration": 14,
   "abilities": ["walljump", "grab", "dash"],
   "doors": {"1": {"buttons": ["s"], "invert": true}},
   "lasers": [
     {"col": 1, "row": 0, "bridge": true},
-    {"col": 18, "row": 8, "buttons": ["b"], "invert": true}
+    {"col": 19, "row": 8, "buttons": ["b"], "invert": true}
   ],
   "mirrors": [{"col": 1, "row": 4, "buttons": ["b"]}],
   "grid": [
@@ -18,22 +18,21 @@
     "#..........................#",
     "#..........................#",
     "#/.........................#",
-    "##..P.............#..#.....#",
-    "#######..>........<..>.....<",
-    "#..#.....#........#..#.....#",
-    "#..#.....#........>..#.....#",
-    "#..1.....#........#..#.....#",
-    "#b.1.....#........#..#.....#",
-    "#####..###........#EE#.....#",
-    "###s...<##........#EE#.....#",
-    "##########........####.....#"
+    "##..P..............#..#....#",
+    "#######..>.........<..>....<",
+    "#..#.....#.........#..#....#",
+    "#..#.....#.........>..#....#",
+    "#..1.....#.........#..#....#",
+    "#b.1.....#.........#..#....#",
+    "#####..###.........#EE#....#",
+    "###s...<##.........#EE#....#",
+    "##########.........####....#"
   ],
   "decor": [
-    {"type": "pendant", "col": 19, "row": 1, "cable": 12},
-    {"type": "skylight", "col": 18, "row": 1, "cols": 4},
-    {"type": "orrery", "col": 11, "row": 1},
-    {"type": "starchart", "col": 23, "row": 2, "cols": 3, "rows": 2},
-    {"type": "walllamp", "col": 5, "row": 8},
-    {"type": "walllamp", "col": 2, "row": 2}
+    {"type": "pendant", "col": 20, "row": 1, "cable": 12},
+    {"type": "skylight", "col": 19, "row": 1, "cols": 4},
+    {"type": "orrery", "col": 12, "row": 1},
+    {"type": "starchart", "col": 3, "row": 1, "cols": 3, "rows": 2},
+    {"type": "walllamp", "col": 5, "row": 8}
   ]
 }

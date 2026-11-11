@@ -1,0 +1,41 @@
+{
+  "id": "grande-lunette",
+  "name": "La grande lunette",
+  "theme": "coupole",
+  "chapter": 8,
+  "chapterEnd": true,
+  "narration": "Deux miroirs, une étoile. La coupole s'ouvre, et en bas le premier train attend. (provisoire)",
+  "duration": null,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {"1": {"buttons": ["s"]}},
+  "lasers": [{"col": 8, "row": 0, "sensor": "sol"}],
+  "mirrors": [
+    {"col": 8, "row": 4, "buttons": ["j"]},
+    {"col": 20, "row": 4, "buttons": ["a"]}
+  ],
+  "grid": [
+    "########v###########s#######",
+    "#......................#...#",
+    "#......................#...#",
+    "#......................#...#",
+    "#......./...........\\..#...#",
+    "#......................#...#",
+    "#......................#...#",
+    "#......................#...#",
+    "#.j....................#...#",
+    "#####..................#...#",
+    "#......................#...#",
+    "#....##................1.E.#",
+    "#.......P......a.......1.E.#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "telescope", "col": 11, "row": 12},
+    {"type": "skylight", "col": 7, "row": 1, "cols": 3},
+    {"type": "starchart", "col": 12, "row": 6, "cols": 4, "rows": 2},
+    {"type": "orrery", "col": 16, "row": 1},
+    {"type": "walllamp", "col": 3, "row": 6},
+    {"type": "bench", "col": 2, "row": 12},
+    {"type": "plant", "col": 21, "row": 12}
+  ]
+}

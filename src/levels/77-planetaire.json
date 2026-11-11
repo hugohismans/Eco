@@ -28,11 +28,11 @@
     "############################"
   ],
   "decor": [
-    {"type": "orrery", "col": 11, "row": 3},
+    {"type": "orrery", "col": 5, "row": 9},
     {"type": "starchart", "col": 16, "row": 4, "cols": 3, "rows": 2},
     {"type": "skylight", "col": 13, "row": 1, "cols": 3},
     {"type": "walllamp", "col": 12, "row": 10},
-    {"type": "pendant", "col": 9, "row": 4, "cable": 8},
-    {"type": "telescope", "col": 22, "row": 12}
+    {"type": "walllamp", "col": 9, "row": 5},
+    {"type": "telescope", "col": 21, "row": 12}
   ]
 }

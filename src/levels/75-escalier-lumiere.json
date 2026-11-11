@@ -34,6 +34,7 @@
     {"type": "lamp", "col": 3, "row": 6},
     {"type": "sign", "col": 13, "row": 5, "text": "COUPOLE"},
     {"type": "lamp", "col": 26, "row": 6},
-    {"type": "bench", "col": 5, "row": 6}
+    {"type": "bench", "col": 5, "row": 6},
+    {"type": "walllamp", "col": 10, "row": 11}
   ]
 }
