@@ -1,0 +1,39 @@
+{
+  "id": "escalier-lumiere",
+  "name": "L'escalier de lumière",
+  "theme": "colline",
+  "chapter": 8,
+  "narration": "Il allume les marches une à une, au rythme où je monte. (provisoire)",
+  "duration": 12,
+  "maxEchoes": 1,
+  "abilities": [],
+  "buttons": {"a": {"hold": 100}, "b": {"hold": 100}, "c": {"hold": 100}},
+  "lasers": [
+    {"col": 23, "row": 11, "bridge": true, "buttons": ["a"]},
+    {"col": 23, "row": 9, "bridge": true, "buttons": ["b"]},
+    {"col": 23, "row": 7, "bridge": true, "buttons": ["c"]}
+  ],
+  "grid": [
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#........................E.#",
+    "#........................E.#",
+    "#################......<####",
+    "#################......#####",
+    "##############.........<####",
+    "##############.........#####",
+    "#......................<####",
+    "#P.a.b.c...............#####",
+    "############################"
+  ],
+  "decor": [
+    {"type": "telescope", "col": 9, "row": 6},
+    {"type": "lamp", "col": 3, "row": 6},
+    {"type": "sign", "col": 13, "row": 5, "text": "COUPOLE"},
+    {"type": "lamp", "col": 26, "row": 6},
+    {"type": "bench", "col": 5, "row": 6}
+  ]
+}

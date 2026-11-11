@@ -1,0 +1,35 @@
+{
+  "id": "palais-glaces",
+  "name": "Le palais des glaces",
+  "theme": "glaces",
+  "chapter": 7,
+  "narration": "Dans la glace, quand je vais vers lui, il vient vers moi. (provisoire)",
+  "duration": 10,
+  "abilities": ["walljump", "grab", "dash"],
+  "echo": {"mirror": true},
+  "doors": {"1": {"buttons": ["a"]}},
+  "grid": [
+    "############################",
+    "#............##............#",
+    "#............##............#",
+    "#............##............#",
+    "#............##............#",
+    "#............##............#",
+    "#............##............#",
+    "#............##............#",
+    "#............##............#",
+    "#............##............#",
+    "####.........##.........####",
+    "#EE1.........##.........#..#",
+    "#EE1..P......##a.....Q..#..#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "mirror", "col": 9, "row": 8, "rows": 4},
+    {"type": "mirror", "col": 18, "row": 8, "rows": 4},
+    {"type": "walllamp", "col": 12, "row": 8},
+    {"type": "walllamp", "col": 15, "row": 8},
+    {"type": "pendant", "col": 6, "row": 4},
+    {"type": "pendant", "col": 21, "row": 4}
+  ]
+}

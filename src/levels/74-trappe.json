@@ -1,0 +1,34 @@
+{
+  "id": "trappe",
+  "name": "La trappe de lumière",
+  "theme": "coupole",
+  "chapter": 8,
+  "narration": "Le sol n'était qu'un rayon. Quelqu'un, derrière moi, y met la main. (provisoire)",
+  "duration": 10,
+  "abilities": ["walljump", "grab", "dash"],
+  "lasers": [{"col": 1, "row": 0, "bridge": true}],
+  "grid": [
+    "#v##########################",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#\\.........................#",
+    "##..P..........#..#........#",
+    "######>........<..>........<",
+    "#######........#..#........#",
+    "#######........#..#........#",
+    "#######........#..#........#",
+    "#######........#EE#........#",
+    "#######........#EE#........#",
+    "#######........####........#"
+  ],
+  "decor": [
+    {"type": "pendant", "col": 16, "row": 1, "cable": 20},
+    {"type": "skylight", "col": 15, "row": 1, "cols": 4},
+    {"type": "starchart", "col": 3, "row": 2, "cols": 3, "rows": 2},
+    {"type": "orrery", "col": 9, "row": 1},
+    {"type": "orrery", "col": 23, "row": 1},
+    {"type": "walllamp", "col": 2, "row": 9}
+  ]
+}

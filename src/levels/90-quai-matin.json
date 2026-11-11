@@ -1,0 +1,40 @@
+{
+  "id": "quai-matin",
+  "name": "Le quai",
+  "theme": "aube",
+  "chapter": 9,
+  "narration": "Le premier train du matin. Il y a de la place pour nous cinq. (provisoire)",
+  "duration": null,
+  "abilities": [],
+  "maxEchoes": 4,
+  "exitStyle": "train",
+  "buttons": {"a": {"weight": 5, "hold": 90}},
+  "doors": {"1": {"buttons": ["a"]}},
+  "stay": {"col": 6, "row": 11, "cols": 2},
+  "endings": {"exit": "Nous montons tous. Le quai reste vide, et c'est bien. (provisoire)", "stay": "Je reste encore un peu. Le jour se lève sur le banc. (provisoire)"},
+  "grid": [
+    "............................",
+    "...............#...........#",
+    "...............#...........#",
+    "...............#...........#",
+    "...............#...........#",
+    "...............#...........#",
+    "...............#...........#",
+    "...............#...........#",
+    "...............#...........#",
+    "...............1.....EE....#",
+    "...............1.....EE....#",
+    "..P..........a.1############",
+    "############################",
+    "############################"
+  ],
+  "decor": [
+    {"type": "canopy", "col": 1, "row": 4, "cols": 13, "pillars": [1, 11]},
+    {"type": "sign", "col": 5, "row": 5, "dy": -2, "text": "QUAI 1"},
+    {"type": "pendant", "col": 4, "row": 7, "cable": 30},
+    {"type": "pendant", "col": 10, "row": 7, "cable": 30},
+    {"type": "train", "variant": "matin", "col": 16, "row": 5, "cols": 11, "floorRow": 11, "groundRow": 12, "layer": "front"},
+    {"type": "bench", "col": 6, "row": 11},
+    {"type": "clock", "col": 9, "row": 6}
+  ]
+}

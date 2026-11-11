@@ -1,0 +1,36 @@
+{
+  "id": "correspondance",
+  "name": "La correspondance",
+  "theme": "matin",
+  "chapter": 9,
+  "narration": "Là où je m'arrête, je repars. Derrière moi, quelqu'un refait le début du chemin. (provisoire)",
+  "duration": 5,
+  "abilities": [],
+  "buttons": {"a": {"hold": 120}},
+  "doors": {"1": {"buttons": ["a"]}},
+  "grid": [
+    "############################",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#.................EE.......#",
+    "#.................EE.......#",
+    "#.................####.....#",
+    "#..................#...#####",
+    "#..................#...#####",
+    "#..................1..######",
+    "#P.a...........R...1..######",
+    "############################"
+  ],
+  "decor": [
+    {"type": "window", "col": 3, "row": 3, "cols": 4, "rows": 4},
+    {"type": "window", "col": 10, "row": 3, "cols": 4, "rows": 4},
+    {"type": "board", "col": 4, "row": 9, "cols": 5},
+    {"type": "clock", "col": 16, "row": 4},
+    {"type": "bench", "col": 8, "row": 12},
+    {"type": "plant", "col": 17, "row": 12},
+    {"type": "sign", "col": 19, "row": 4, "text": "VOIE 2"}
+  ]
+}

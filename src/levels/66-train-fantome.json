@@ -1,0 +1,35 @@
+{
+  "id": "train-fantome",
+  "name": "Le train fantôme",
+  "theme": "foire",
+  "chapter": 7,
+  "narration": "Je lui tiens la porte. Il me tiendra la mienne. (provisoire)",
+  "duration": 10,
+  "abilities": ["walljump", "grab", "dash"],
+  "echo": {"mirror": true},
+  "doors": {"1": {"buttons": ["b"]}, "2": {"buttons": ["a"]}},
+  "grid": [
+    "############################",
+    "#............##............#",
+    "#............##............#",
+    "#............##............#",
+    "#............##............#",
+    "#............##............#",
+    "#............##............#",
+    "#............##............#",
+    "#............##............#",
+    "#............##............#",
+    "#.........###########......#",
+    "#.........1EE##..#.2.......#",
+    "#P.a......1EE##..#b2......Q#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "wheel", "col": 6, "row": 5},
+    {"type": "garland", "col": 1, "row": 3, "cols": 12},
+    {"type": "garland", "col": 15, "row": 3, "cols": 12},
+    {"type": "sign", "col": 15, "row": 8, "text": "FANTOME"},
+    {"type": "lamp", "col": 22, "row": 9},
+    {"type": "stall", "col": 5, "row": 12, "cols": 3, "variant": 2}
+  ]
+}

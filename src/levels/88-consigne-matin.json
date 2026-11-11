@@ -1,0 +1,37 @@
+{
+  "id": "consigne-matin",
+  "name": "La consigne",
+  "theme": "matin",
+  "chapter": 9,
+  "narration": "Trois souvenirs à la fois, pas un de plus : je choisis lesquels. (provisoire)",
+  "duration": 6,
+  "abilities": [],
+  "maxEchoes": 3,
+  "doors": {"1": {"buttons": ["a"]}, "2": {"buttons": ["b"]}},
+  "grid": [
+    "############################",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#..........................#",
+    "#...a.P....................#",
+    "#####################......#",
+    "#..#.#.....................#",
+    "#..#.#.....................#",
+    "#..#.#.....................#",
+    "#E.2.1.....................#",
+    "#E.2.1b...........R........#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "sign", "col": 9, "row": 8, "text": "CONSIGNE"},
+    {"type": "window", "col": 9, "row": 2, "cols": 4, "rows": 3},
+    {"type": "window", "col": 15, "row": 2, "cols": 4, "rows": 3},
+    {"type": "counter", "col": 12, "row": 12, "cols": 3},
+    {"type": "walllamp", "col": 8, "row": 9},
+    {"type": "walllamp", "col": 16, "row": 9},
+    {"type": "clock", "col": 24, "row": 3},
+    {"type": "plant", "col": 25, "row": 12}
+  ]
+}

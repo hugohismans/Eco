@@ -1,0 +1,34 @@
+{
+  "id": "ombre-portee",
+  "name": "L'ombre portée",
+  "theme": "coupole",
+  "chapter": 8,
+  "narration": "Il suffit que l'un de nous se tienne dans la lumière pour qu'il fasse nuit plus loin. (provisoire)",
+  "duration": 10,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {"1": {"buttons": ["s"], "invert": true}},
+  "grid": [
+    "############################",
+    "#.....................#....#",
+    "#.....................#....#",
+    "#.....................#....#",
+    "#.....................#....#",
+    "#.....................#....#",
+    "#.....................#....#",
+    "#.....................#....#",
+    "#.....................1..E.#",
+    "#.P...................1..E.#",
+    "########...#################",
+    "#######>..............s#####",
+    "############################",
+    "############################"
+  ],
+  "decor": [
+    {"type": "skylight", "col": 12, "row": 1, "cols": 4},
+    {"type": "starchart", "col": 3, "row": 3, "cols": 3, "rows": 2},
+    {"type": "orrery", "col": 17, "row": 1},
+    {"type": "walllamp", "col": 20, "row": 6},
+    {"type": "telescope", "col": 14, "row": 9},
+    {"type": "plant", "col": 5, "row": 9}
+  ]
+}

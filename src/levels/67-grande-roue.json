@@ -1,0 +1,35 @@
+{
+  "id": "grande-roue",
+  "name": "La grande roue",
+  "theme": "foire",
+  "chapter": 7,
+  "narration": "Sa nacelle n'est pas la mienne ; c'est la sienne qu'il faut attendre. (provisoire)",
+  "duration": 10,
+  "abilities": [],
+  "echo": {"mirror": true},
+  "doors": {"1": {"buttons": ["a"]}},
+  "platforms": [{"col": 6, "row": 10, "cols": 2, "to": {"col": 6, "row": 6}, "buttons": ["i"], "invert": true, "behavior": "loop"}, {"col": 20, "row": 6, "cols": 2, "to": {"col": 20, "row": 10}, "buttons": ["i"], "invert": true, "behavior": "loop"}],
+  "grid": [
+    "i###########################",
+    "#..........................#",
+    "#..........................#",
+    "#........#........#........#",
+    "#........####..####........#",
+    "#........1EE#..#..#........#",
+    "#........1EE#..#..#a.......#",
+    "#.......#####..#####.......#",
+    "#.......#..........#.......#",
+    "#.......#..........#.......#",
+    "#...P...#..........#...Q...#",
+    "######..############..######",
+    "######..############..######",
+    "############################"
+  ],
+  "decor": [
+    {"type": "wheel", "col": 13, "row": 4},
+    {"type": "carousel", "col": 11, "row": 10, "cols": 6},
+    {"type": "garland", "col": 1, "row": 1, "cols": 26},
+    {"type": "lamp", "col": 2, "row": 7},
+    {"type": "lamp", "col": 25, "row": 7}
+  ]
+}
