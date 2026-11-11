@@ -137,8 +137,8 @@ décor (`lamp`, `pendant`, `window`, `clock`, `poster`, `bench`, `canopy`, `faca
 
 ## Niveaux
 
-Soixante pièces en six chapitres, chacun avec son ambiance ; on passe de l'un à
-l'autre en train (puis en métro) :
+Quatre-vingt-dix pièces en neuf chapitres, chacun avec son ambiance ; on passe de l'un
+à l'autre en train (en métro, en funiculaire) :
 
 1. **La gare, la nuit** (1–10) : boutons, portes, valises, faisceaux, monte-charge,
    courte échelle, puis saut au mur, escalade et dash ; on prend le train de nuit.
@@ -150,12 +150,19 @@ l'autre en train (puis en métro) :
 5. **Le train de nuit** (41–50) : à bord et sur le toit ; courants d'air, plaques
    lourdes (deux corps), minuteries, la lampe du contrôleur qui efface les échos.
 6. **La mer** (51–60) : le terminus, la côte, la marée qui monte et redescend,
-   des pièces qui ne gardent que peu d'échos ; le dernier train et le choix final
-   (monter, ou rester).
+   des pièces qui ne gardent que peu d'échos ; le dernier train repart le long de la côte.
+7. **La fête foraine** (61–70) : le palais des glaces. Les échos partent d'ailleurs,
+   ou deviennent des reflets (ils font nos gestes à l'envers) ; tourniquets à sens unique.
+8. **L'observatoire** (71–80) : la lumière. Miroirs qui renvoient les faisceaux,
+   récepteurs, ponts de lumière sur lesquels on marche (et qu'un corps peut couper).
+9. **Le retour** (81–90) : la première gare, à l'aube ; on ne fait plus que marcher et
+   sauter, et les échos se font rares. Des malles qui restent où on les laisse, des
+   relais d'où l'on repart ; le premier train du matin et le choix final (monter tous
+   ensemble, ou rester).
 
 La conception de chaque pièce (idée, astuce, progression) est dans
 [`docs/niveaux.md`](docs/niveaux.md). Chaque solution est jouée par un robot dans
-`tests/levels.test.js` et `tests/chapter2.test.js` à `chapter6.test.js`, qui
+`tests/levels.test.js` et `tests/chapter2.test.js` à `chapter9.test.js`, qui
 vérifient aussi qu'elle ne marche pas sans les échos et que les raccourcis évidents
 échouent.
 
@@ -202,8 +209,14 @@ La grille fait 28 colonnes sur 14 lignes (format paysage) :
 | `S` | ressort |
 | `!` | tableau : seuls les échos le traversent |
 | `?` | vitrine : elle n'arrête que les échos |
+| `Q` | départ des échos, s'il diffère du nôtre |
+| `)` `(` | tourniquet : on ne le franchit que vers la droite / vers la gauche |
+| `/` `\` | miroir (plein) : renvoie les faisceaux à angle droit |
+| `s t u w x y z` | récepteur (plein) : actif tant qu'un faisceau l'atteint |
+| `M` | malle : poussable, elle reste en place d'une tentative à l'autre |
+| `R` | relais : « Rejouer » dessus, et la tentative suivante part de là |
 
-- `duration` en secondes, `null` pour un niveau sans chrono ; `chapter` (1 à 6) ;
+- `duration` en secondes, `null` pour un niveau sans chrono ; `chapter` (1 à 9) ;
   `chapterEnd: true` pour la pièce qui mène au chapitre suivant.
 - Faisceaux : `cycle: [allumé, éteint]` et `phase` (en ticks) ; `sensor: "id"` pour une
   barrière lumineuse non mortelle, utilisable comme un bouton ; `latch: true` pour une
@@ -220,5 +233,13 @@ La grille fait 28 colonnes sur 14 lignes (format paysage) :
   efface l'écho qu'elle touche (un corps ou une valise peut lui faire écran).
 - `water: { row, amp, period, phase }` : marée ; la surface monte de `amp` rangées
   et redescend, en `period` ticks. Le joueur s'y noie ; les échos, non.
-- `maxEchoes` : nombre d'échos gardés dans la pièce (4 par défaut).
+- `maxEchoes` : nombre d'échos gardés dans la pièce (4 par défaut ; 0 : aucun).
+- `echo: { "mirror": true }` : les échos sont des reflets (gauche et droite inversées).
+- `mirrors: [{ col, row, buttons }]` : miroir pivotant, qui prend l'autre diagonale quand
+  son lien est actif. `receivers: { "s": { "hold": 60 } }` : récepteur à rémanence.
+- Faisceau `bridge: true` : pont de lumière, sans danger ; ses portions horizontales
+  portent comme une plateforme fine, au ras du haut de leur rangée. Un corps placé dans
+  le faisceau le coupe : le pont s'arrête là.
+- Une malle `M` garde sa place d'une tentative à l'autre ; « Effacer » remet tout en
+  place. Un écho part toujours de là où son enregistrement a commencé (relais `R`).
 - `stay` : zone où l'on peut choisir de rester (fin `stay`) ; la sortie donne la fin `exit`.
