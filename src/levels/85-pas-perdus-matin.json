@@ -1,0 +1,37 @@
+{
+  "id": "pas-perdus-matin",
+  "name": "La salle des pas perdus",
+  "theme": "matin",
+  "chapter": 9,
+  "narration": "Il pousse encore, comme je poussais. Il faut bien que quelqu'un le retienne. (provisoire)",
+  "duration": 8,
+  "abilities": [],
+  "maxEchoes": 1,
+  "doors": {"1": {"buttons": ["a"]}},
+  "winds": [{"col": 5, "row": 11, "cols": 1, "rows": 2, "dx": -6}],
+  "grid": [
+    "############################",
+    "#................#.........#",
+    "#................#.........#",
+    "#................#.........#",
+    "#................#.........#",
+    "#................#.........#",
+    "#................#.........#",
+    "#................#.........#",
+    "#................#......EE.#",
+    "#................#......EE.#",
+    "#.######.........#...#######",
+    "#........==......1...#######",
+    "#.M....a....P....1...#######",
+    "########.###################"
+  ],
+  "decor": [
+    {"type": "window", "col": 3, "row": 2, "cols": 4, "rows": 4},
+    {"type": "window", "col": 10, "row": 2, "cols": 4, "rows": 4},
+    {"type": "sign", "col": 3, "row": 10, "text": "BAGAGES"},
+    {"type": "clock", "col": 15, "row": 6},
+    {"type": "bench", "col": 13, "row": 12},
+    {"type": "walllamp", "col": 19, "row": 8},
+    {"type": "plant", "col": 18, "row": 12}
+  ]
+}

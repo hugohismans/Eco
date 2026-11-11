@@ -1,0 +1,38 @@
+{
+  "id": "planetaire",
+  "name": "Le planétaire",
+  "theme": "coupole",
+  "chapter": 8,
+  "narration": "Je suis du doigt le trajet du rayon. Là où il brûle, un autre que moi peut aller. (provisoire)",
+  "duration": 10,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {"1": {"buttons": ["s"]}, "2": {"buttons": ["t"]}},
+  "mirrors": [
+    {"col": 14, "row": 2, "buttons": ["a"]},
+    {"col": 1, "row": 12, "buttons": ["b"]}
+  ],
+  "grid": [
+    "##############v#############",
+    "#...................#...#..#",
+    "#/............/............t",
+    "#.#.................#...#..#",
+    "#.#.................#...#..#",
+    "#.#.................#...#..#",
+    "#.#.................#...#..#",
+    "#.#..a.P............#...#..#",
+    "#.#######.######....#...#..#",
+    "#.#.................#...#..#",
+    "#.#.................#...#..#",
+    "#.#.................1...2E.#",
+    "s\\.......b..........1...2E.#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "orrery", "col": 11, "row": 3},
+    {"type": "starchart", "col": 16, "row": 4, "cols": 3, "rows": 2},
+    {"type": "skylight", "col": 13, "row": 1, "cols": 3},
+    {"type": "walllamp", "col": 12, "row": 10},
+    {"type": "pendant", "col": 9, "row": 4, "cable": 8},
+    {"type": "telescope", "col": 22, "row": 12}
+  ]
+}

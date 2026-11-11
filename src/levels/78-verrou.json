@@ -1,0 +1,39 @@
+{
+  "id": "verrou",
+  "name": "Le verrou de lumière",
+  "theme": "coupole",
+  "chapter": 8,
+  "narration": "La porte se tient ouverte toute seule, tant que personne ne passe dans sa lumière. (provisoire)",
+  "duration": 10,
+  "maxEchoes": 1,
+  "abilities": ["walljump", "grab", "dash"],
+  "doors": {
+    "1": {"buttons": ["a", "s"], "mode": "or"},
+    "2": {"buttons": ["b"]}
+  },
+  "lasers": [{"col": 18, "row": 11, "sensor": "rai"}],
+  "grid": [
+    "############################",
+    "#........#.....#......#....#",
+    "#........#.....#......#....#",
+    "#........#.....#......#....#",
+    "#........#.....#......#....#",
+    "#........#.....#......#....#",
+    "#........#.....#......#....#",
+    "#........#.....#......#....#",
+    "#........#.....#......#....#",
+    "#b.......#.....#......2..E.#",
+    "###......#.....#......2..E.#",
+    "s........).....1..<#########",
+    "#..#.P...).a...1..##########",
+    "############################"
+  ],
+  "decor": [
+    {"type": "starchart", "col": 4, "row": 3, "cols": 3, "rows": 2},
+    {"type": "walllamp", "col": 12, "row": 6},
+    {"type": "orrery", "col": 18, "row": 1},
+    {"type": "skylight", "col": 4, "row": 1, "cols": 3},
+    {"type": "plant", "col": 20, "row": 10},
+    {"type": "walllamp", "col": 24, "row": 6}
+  ]
+}

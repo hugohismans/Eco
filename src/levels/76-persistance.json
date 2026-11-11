@@ -1,0 +1,40 @@
+{
+  "id": "persistance",
+  "name": "La persistance",
+  "theme": "coupole",
+  "chapter": 8,
+  "narration": "Une lumière qui va et vient assez vite a l'air d'être partout. (provisoire)",
+  "duration": 14,
+  "abilities": ["walljump", "grab"],
+  "doors": {
+    "1": {"buttons": ["s", "t"], "mode": "and"},
+    "2": {"buttons": ["s", "t"], "mode": "and"}
+  },
+  "lasers": [{"col": 13, "row": 0, "sensor": "lum"}],
+  "mirrors": [{"col": 13, "row": 2, "buttons": ["j"]}],
+  "receivers": {"s": {"hold": 150}, "t": {"hold": 150}},
+  "grid": [
+    "#############v##############",
+    "#.......#.............#....#",
+    "s............/.............t",
+    "#.......#.............#....#",
+    "#.......#.............#....#",
+    "#.......1.............2..E.#",
+    "#.......1.............2..E.#",
+    "#..#########################",
+    "#..........................#",
+    "#==........................#",
+    "#..........................#",
+    "#==........................#",
+    "#....P...................j.#",
+    "############################"
+  ],
+  "decor": [
+    {"type": "skylight", "col": 12, "row": 1, "cols": 3},
+    {"type": "orrery", "col": 15, "row": 8},
+    {"type": "starchart", "col": 8, "row": 9, "cols": 4, "rows": 2},
+    {"type": "telescope", "col": 20, "row": 12},
+    {"type": "walllamp", "col": 4, "row": 10},
+    {"type": "pendant", "col": 15, "row": 3, "cable": 8}
+  ]
+}
