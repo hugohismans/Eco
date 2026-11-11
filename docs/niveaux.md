@@ -268,9 +268,10 @@ là-bas pour qu'il vienne ici*.
 61. **L'autre entrée** (`autre-entree`, foire). Deux allées séparées par une palissade.
     L'écho part de `Q`, dans l'autre allée, et refait nos pas : on marche de ce côté
     jusqu'au repère, il s'arrête sur le bouton de l'autre.
-62. **Le palais des glaces** (`palais-glaces`, glaces). Premier reflet, salle
-    symétrique. Le bouton n'existe que de son côté : on va se placer là où serait le
-    bouton, du nôtre.
+62. **Le palais des glaces** (`palais-glaces`, glaces). Premier reflet. La glace est
+    un mur au centre ; le bouton n'existe que de son côté, contre la glace ; notre
+    porte est derrière nous. On marche vers la glace jusqu'à la toucher : il y vient
+    aussi.
 63. **Face à face** (`face-a-face`, glaces). La sortie est en hauteur, au milieu. On
     marche jusqu'au centre ; le reflet aussi. Sa tête devient la marche.
 64. **Les tourniquets** (`tourniquets`, foire). Mon tourniquet me laisse passer ; le
@@ -286,9 +287,11 @@ là-bas pour qu'il vienne ici*.
     quand SA nacelle passe, pas la mienne : mimer, en rythme.
 68. **L'envers du décor** (`envers`, glaces). Il me faut une marche de MON côté : pour
     que mon reflet vienne ici, je dois aller me placer là-bas.
-69. **La galerie des glaces** (`galerie-glaces`, glaces). L'épreuve : trois reflets,
-    une leçon chacun (venir ici, être arrêté par un tourniquet, mimer), et l'ordre
-    compte (on ne monte que sur un plus ancien).
+69. **La galerie des glaces** (`galerie-glaces`, glaces, sans capacités). L'épreuve :
+    trois reflets. Le premier monte sur sa passerelle et bute sur son tourniquet, sur
+    le bouton ; le deuxième traverse toute la salle et vient au pied de notre
+    corniche ; le troisième fait de même puis saute sur place : il retombe sur la tête
+    du deuxième. La corniche est à quatre cases : il faut les deux têtes, dans l'ordre.
 70. **Le funiculaire** (`funiculaire`, foire, sans chrono, fin de chapitre). Douce.
     Deux plaques, une à chaque bout : chaque reflet est là où je n'étais pas. On
     croise. Le funiculaire monte vers l'observatoire.
@@ -371,17 +374,23 @@ et on saute, comme au début. Et les échos se font rares. Nouveautés :
     n'en revient pas. L'écho qui tient la plaque d'avant doit être enregistré AVANT de
     partir ; et il ne vivra qu'une tentative de plus (`maxEchoes` 2).
 85. **La salle des pas perdus** (`pas-perdus-matin`, matin). Un seul écho. La malle
-    doit rester SUR la plaque, mais l'écho qui l'y a poussée la repousse plus loin.
-    Il faut une tentative pour le retenir : se mettre en travers.
+    doit rester SUR la plaque (au-delà, un creux d'où elle ne revient pas), mais
+    l'écho qui l'y a poussée la repousse. Il faut une tentative pour le retenir : on
+    descend dans le creux, la malle bute contre nous. Un courant d'air sur le trajet
+    ramène une malle lâchée en route (pas de dosage facile) ; et l'unique écho de la
+    dernière tentative sert de marche pour atteindre la sortie.
 86. **Les deux quais** (`deux-quais`, aube). Le relais d'abord, les aides ensuite : la
     bande du trajet ne sert à rien, autant qu'elle soit la première oubliée.
-87. **Seul** (`seul`, aube). Aucun écho. Deux malles, des relais, des vies de cinq
-    secondes : une malle au fond du fossé pour passer, l'autre sur la plaque.
-88. **La consigne** (`consigne-matin`, matin). Le coffre : une aide dehors (avant), le
-    relais dedans, une aide dedans. Trois échos, pas un de plus, et une seule
-    tentative où tous les trois existent.
-89. **Le premier train** (`premier-train`, aube). L'épreuve : malle, cale, relais, un
-    seul écho.
+87. **Seul** (`seul`, aube). Aucun écho. Deux malles sur un quai haut d'où l'on ne
+    remonte pas, des vies de cinq secondes : l'une au pied du mur pour passer, l'autre
+    sur la plaque ; puis le relais, derrière la porte.
+88. **La consigne** (`consigne-matin`, matin). Le coffre : on y tombe depuis la
+    galerie, et sa porte, tenue par une plaque de la galerie, en est la seule sortie.
+    Une aide dehors (avant), le relais dedans, une aide dedans. Trois échos, pas un de
+    plus, et une seule tentative où tous les trois existent.
+89. **Le premier train** (`premier-train`, aube). L'épreuve, un seul écho : pousser
+    la malle contre le vent jusqu'à la plaque, la retenir, prendre le relais, puis
+    seulement enregistrer celui qui tiendra la seconde plaque.
 90. **Le quai** (`quai-matin`, aube, sans chrono). La fin, douce. Le premier train du
     matin ; sa porte s'ouvre quand on est cinq sur le marchepied : soi, et ses quatre
     échos. Monter tous ensemble, ou rester sur le banc : deux fins.
