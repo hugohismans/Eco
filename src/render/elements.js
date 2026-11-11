@@ -8,7 +8,7 @@ import {
   T_GATE_R, T_GATE_L, T_MIRROR_A, T_MIRROR_B, ACTOR_W, ACTOR_H,
 } from '../sim/constants.js';
 import { C } from './palette.js';
-import { rect, px, makeCanvas } from './pixel.js';
+import { rect, px, makeCanvas, textSprite } from './pixel.js';
 import { LEVEL_Y } from './screen.js';
 
 /** Cases spéciales d'un niveau, repérées une fois. */
@@ -79,6 +79,13 @@ export function drawElements(P, E, world, lights, t, spawn = null) {
       }
       E.globalAlpha = 1;
       lights.push({ x: x + 8, y: y + 10, r: rl.active ? 44 : 28, color: C.lamp2, intensity: 0.6 * a, flicker: 0, shadows: false, halo: 0.7 });
+      // Debout dessus : un mot discret, « on repartira d'ici ».
+      if (rl.active) {
+        const label = textSprite('RELAIS', C.paper3, null);
+        E.globalAlpha = 0.55 + 0.3 * Math.sin(t * 2.5);
+        E.drawImage(label, Math.round(x + 8 - label.width / 2), y - 22);
+        E.globalAlpha = 1;
+      }
     }
   }
 
