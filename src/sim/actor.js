@@ -46,9 +46,11 @@ const WALL_KINDS = new Set(['tile', 'door', 'platform', 'crumble']);
  * @param {Uint8Array|null} tape entrées enregistrées (écho) ou null (joueur)
  * @param {number} attempt numéro de la tentative (sert à la teinte de l'écho)
  */
-export function createActor(spawn, index, tape, attempt) {
+export function createActor(spawn, index, tape, attempt, mirror = false) {
   return {
     kind: tape ? 'echo' : 'player',
+    /** Reflet : un écho qui rejoue nos gestes, gauche et droite inversées. */
+    mirror: !!tape && mirror,
     index,
     tape,
     attempt,
@@ -66,7 +68,7 @@ export function createActor(spawn, index, tape, attempt) {
     prevY: spawn.y,
     onGround: false,
     ground: null,
-    facing: 1,
+    facing: tape && mirror ? -1 : 1,
     coyote: 0,
     jumpBuffer: 0,
     prevJump: false,
@@ -111,7 +113,12 @@ export function createActor(spawn, index, tape, attempt) {
 /** Entrée de l'acteur pour le tick `tick`. */
 export function actorInput(actor, tick, playerInput) {
   if (!actor.tape) return playerInput;
-  if (tick < actor.tape.length) return actor.tape[tick];
+  if (tick < actor.tape.length) {
+    const bits = actor.tape[tick];
+    if (!actor.mirror) return bits;
+    // Reflet : gauche et droite échangées.
+    return (bits & ~(IN_LEFT | IN_RIGHT)) | ((bits & IN_LEFT) ? IN_RIGHT : 0) | ((bits & IN_RIGHT) ? IN_LEFT : 0);
+  }
   actor.finished = true;
   return 0;
 }

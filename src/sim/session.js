@@ -29,6 +29,10 @@ export class Session {
     this.deathTicks = 0;
     /** Événements de session depuis la dernière lecture : [{type}] */
     this.events = [];
+    /** Départ du joueur s'il a « rejoué » sur un relais (sinon null : le départ du niveau). */
+    this.spawn = null;
+    /** Ce qui reste d'une tentative à l'autre (la place des malles), ou null. */
+    this.carry = null;
     this.beginAttempt();
   }
 
@@ -49,7 +53,7 @@ export class Session {
     this.attempt = this.attemptCount;
     this.recording = [];
     this.deathTicks = 0;
-    this.world = new World(this.level, this.echoes, this.attempt);
+    this.world = new World(this.level, this.echoes, this.attempt, { spawn: this.spawn, carry: this.carry });
   }
 
   /** Avance d'un tick avec l'entrée du joueur (un octet). */
@@ -88,7 +92,14 @@ export class Session {
   replay() {
     if (this.state !== 'playing' || this.recording.length === 0) return;
     if (this.world.player.dead) return;
-    this.history.push({ tape: Uint8Array.from(this.recording), attempt: this.attempt });
+    this.history.push({ tape: Uint8Array.from(this.recording), attempt: this.attempt, spawn: this.spawn });
+    // Sur un relais : on repartira d'ici. Les malles restent où elles sont.
+    const relay = this.world.relayUnderPlayer();
+    if (relay) {
+      this.spawn = relay.spawn;
+      this.events.push({ type: 'relay' });
+    }
+    this.carry = this.world.carryState();
     this.beginAttempt();
     this.events.push({ type: 'replay' });
   }
@@ -97,6 +108,8 @@ export class Session {
   restart() {
     if (this.state !== 'playing') return;
     this.history = [];
+    this.spawn = null;
+    this.carry = null;
     this.beginAttempt();
     this.events.push({ type: 'restart' });
   }

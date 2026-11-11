@@ -20,6 +20,11 @@
 //   "water": { "row": 12, "amp": 3, "period": 600, "phase": 0 },  marée (rangées, ticks)
 //   "maxEchoes": 2,                                   moins d'échos autorisés
 // Faisceau "erase": true : la lampe du contrôleur, qui efface les échos qu'elle touche.
+//   "echo": { "mirror": true },                       les échos sont des reflets (gauche et droite inversées)
+//   "mirrors": [ { "col", "row", "buttons": ["j"] } ], miroir pivotant : il bascule quand son lien est actif
+//   "receivers": { "s": { "hold": 60 } },             récepteur à rémanence (ticks)
+// Faisceau "bridge": true : pont de lumière ; ses portions horizontales portent comme
+//   une plateforme fine (au ras du haut de leur rangée). Un corps dans le faisceau le coupe.
 //   "abilities": ["walljump", "grab", "dash"],     capacités disponibles
 //   "teach": "dash",                                capacité présentée ici (carte)
 //   "decor": [ { "type": "bench", "col": 3, "row": 14 } ]   (purement visuel)
@@ -40,6 +45,12 @@
 //   S  ressort (renvoie en l'air)
 //   !  tableau : les échos le traversent, pas le joueur ni les valises
 //   ?  vitrine : le joueur et les valises la traversent, pas les échos
+//   Q  départ des échos (s'il diffère du nôtre)
+//   )  tourniquet : on ne le franchit que vers la droite     (  seulement vers la gauche
+//   /  \  miroirs (pleins) : ils renvoient les faisceaux à angle droit
+//   s t u w x y z  récepteur (plein) : actif tant qu'un faisceau l'atteint
+//   M  malle : un bloc poussable qui reste où il est d'une tentative à l'autre
+//   R  relais : si l'on « rejoue » debout dessus, la tentative suivante part de là
 //
 // Une porte est ouverte, un faisceau est allumé, une plateforme est « active »
 // quand ses boutons le sont : tous (and), au moins un (or), ou un nombre
@@ -56,9 +67,15 @@ import {
   T_EMPTY, T_SOLID, T_ONEWAY, ACTOR_W, ACTOR_H,
   BLOCK_TYPES, PLATFORM_H, PLATFORM_SPEED, ABILITIES,
   T_ICE, T_CONV_L, T_CONV_R, T_GHOST, T_GLASS, SPRING_H,
+  T_GATE_R, T_GATE_L, T_MIRROR_A, T_MIRROR_B, T_RECEIVER,
 } from './constants.js';
 
-const TILE_CHARS = { '#': T_SOLID, '=': T_ONEWAY, '~': T_ICE, '{': T_CONV_L, '}': T_CONV_R, '!': T_GHOST, '?': T_GLASS };
+const TILE_CHARS = {
+  '#': T_SOLID, '=': T_ONEWAY, '~': T_ICE, '{': T_CONV_L, '}': T_CONV_R, '!': T_GHOST, '?': T_GLASS,
+  ')': T_GATE_R, '(': T_GATE_L, '/': T_MIRROR_A, '\\': T_MIRROR_B,
+};
+/** Récepteurs : lettres libres de la fin de l'alphabet (« v » est un émetteur). */
+const RECEIVER_CHARS = 'stuwxyz';
 
 /** Hauteur visible d'un bouton relevé (px) : sert aussi de capteur. */
 const BUTTON_SENSOR_H = 4;
@@ -91,6 +108,9 @@ export function parseLevel(def) {
   const levers = [];
   const crumbles = [];
   const springs = [];
+  const receivers = [];
+  const relays = [];
+  let echoSpawn = null;
 
   for (let r = 0; r < GRID_H; r++) {
     for (let c = 0; c < GRID_W; c++) {
@@ -113,6 +133,16 @@ export function parseLevel(def) {
       } else if (ch === 'S') {
         springs.push({ col: c, row: r, x: c * TILE_SUB, y: (r + 1) * TILE_SUB - SPRING_H, w: TILE_SUB, h: SPRING_H });
       }
+      else if (RECEIVER_CHARS.includes(ch)) {
+        if (receivers.some((x) => x.id === ch)) throw new Error(`${where} : le récepteur « ${ch} » apparaît deux fois.`);
+        t = T_RECEIVER;
+        receivers.push({ id: ch, col: c, row: r, x: c * TILE_SUB, y: r * TILE_SUB, w: TILE_SUB, h: TILE_SUB, hold: 0 });
+      } else if (ch === 'Q') {
+        if (echoSpawn) throw new Error(`${where} : un seul départ des échos « Q » est permis.`);
+        echoSpawn = { col: c, row: r };
+      } else if (ch === 'R') {
+        relays.push({ ...makeButton(`R${relays.length}`, c, r), spawn: spawnAt(c, r) });
+      }
       else if (ch === 'P') {
         if (spawn) throw new Error(`${where} : un seul départ « P » est permis.`);
         spawn = { col: c, row: r };
@@ -128,6 +158,7 @@ export function parseLevel(def) {
       } else if (BLOCK_TYPES[ch]) {
         const bt = BLOCK_TYPES[ch];
         blocks.push({
+          persist: !!bt.persist,
           type: bt.type,
           w: bt.w,
           h: bt.h,
@@ -149,8 +180,10 @@ export function parseLevel(def) {
 
   // Capteurs : des faisceaux « sensor », avec un identifiant utilisable comme un bouton.
   const sensorIds = (def.lasers ?? []).filter((l) => l.sensor).map((l) => String(l.sensor));
-  const buttonIds = new Set([...buttons.map((b) => b.id), ...levers.map((l) => l.id), ...sensorIds]);
-  if (buttonIds.size !== buttons.length + levers.length + sensorIds.length) {
+  const buttonIds = new Set([
+    ...buttons.map((b) => b.id), ...levers.map((l) => l.id), ...sensorIds, ...receivers.map((x) => x.id),
+  ]);
+  if (buttonIds.size !== buttons.length + levers.length + sensorIds.length + receivers.length) {
     throw new Error(`${where} : un identifiant de bouton, de levier ou de capteur est utilisé deux fois.`);
   }
   /** Vérifie une liaison {buttons, mode, invert} et la normalise. */
@@ -201,6 +234,7 @@ export function parseLevel(def) {
       sensor: cfg?.sensor ? String(cfg.sensor) : null,
       latch: !!cfg?.latch,
       erase: !!cfg?.erase,
+      bridge: !!cfg?.bridge,
     };
   });
   for (const l of laserLinks) {
@@ -253,6 +287,20 @@ export function parseLevel(def) {
   }
   for (const b of buttons) { b.weight ??= 1; b.hold ??= 0; }
 
+  // Récepteurs à rémanence.
+  for (const [id, cfg] of Object.entries(def.receivers ?? {})) {
+    const rc = receivers.find((x) => x.id === id);
+    if (!rc) throw new Error(`${where} : « receivers » cite un récepteur « ${id} » absent de la grille.`);
+    rc.hold = Math.max(0, cfg.hold | 0);
+  }
+
+  // Miroirs pivotants : ils basculent d'une diagonale à l'autre quand leur lien est actif.
+  const mirrors = (def.mirrors ?? []).map((m) => {
+    const t = tiles[m.row * GRID_W + m.col];
+    if (t !== T_MIRROR_A && t !== T_MIRROR_B) throw new Error(`${where} : aucun miroir en (${m.col}, ${m.row}).`);
+    return { col: m.col, row: m.row, ...link(m, `le miroir (${m.col}, ${m.row})`, true) };
+  });
+
   // Courants d'air (vent) : zones qui poussent horizontalement.
   const winds = (def.winds ?? []).map((wd, i) => {
     if (!wd.dx) throw new Error(`${where} : le vent ${i + 1} n'a pas de force « dx ».`);
@@ -286,10 +334,7 @@ export function parseLevel(def) {
   }
 
   // Le personnage apparaît centré dans sa case, les pieds au bas de la case.
-  const spawnPos = {
-    x: spawn.col * TILE_SUB + ((TILE * SUB - ACTOR_W) >> 1),
-    y: (spawn.row + 1) * TILE_SUB - ACTOR_H,
-  };
+  const spawnPos = spawnAt(spawn.col, spawn.row);
 
   return Object.freeze({
     id: def.id,
@@ -317,6 +362,12 @@ export function parseLevel(def) {
     winds,
     water,
     maxEchoes,
+    receivers,
+    mirrors,
+    relays,
+    /** Départ des échos, s'il diffère du nôtre ; reflets (gauche et droite inversées). */
+    echoSpawn: echoSpawn ? spawnAt(echoSpawn.col, echoSpawn.row) : null,
+    echoMirror: !!def.echo?.mirror,
     abilities: Object.freeze([...abilities]),
     teach: def.teach ?? null,
     chapter: def.chapter ?? 1,
@@ -324,6 +375,14 @@ export function parseLevel(def) {
     chapterEnd: !!def.chapterEnd,
     decor: def.decor ?? [],
   });
+}
+
+/** Position d'un personnage centré dans la case, les pieds au bas de la case. */
+function spawnAt(col, row) {
+  return {
+    x: col * TILE_SUB + ((TILE * SUB - ACTOR_W) >> 1),
+    y: (row + 1) * TILE_SUB - ACTOR_H,
+  };
 }
 
 function makeButton(id, col, row) {

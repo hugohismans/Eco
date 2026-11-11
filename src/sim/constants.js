@@ -49,6 +49,14 @@ export const T_CONV_R = 5;
 export const T_GHOST = 6;
 /** Vitrine : laisse passer le joueur et les valises, arrête les échos. */
 export const T_GLASS = 7;
+/** Tourniquets : on ne les franchit que dans un sens (vers la droite / vers la gauche). */
+export const T_GATE_R = 8;
+export const T_GATE_L = 9;
+/** Miroirs : pleins ; ils renvoient les faisceaux à angle droit ( « / » et « \ » ). */
+export const T_MIRROR_A = 10;
+export const T_MIRROR_B = 11;
+/** Récepteur : plein ; actif tant qu'un faisceau l'atteint. */
+export const T_RECEIVER = 12;
 
 // --- Personnage (joueur et échos partagent exactement ces valeurs) -------
 export const ACTOR_W = 10 * SUB;
@@ -92,6 +100,8 @@ export const PUSH_SPEED = 10;
 export const BLOCK_TYPES = {
   B: { type: 'valise', w: 14 * SUB, h: 12 * SUB },
   K: { type: 'caisse', w: 14 * SUB, h: 14 * SUB },
+  // La malle : elle reste où on l'a laissée d'une tentative à l'autre.
+  M: { type: 'malle', w: 14 * SUB, h: 14 * SUB, persist: true },
 };
 
 /** Épaisseur d'une plateforme mobile (monte-charge), en sous-pixels. */

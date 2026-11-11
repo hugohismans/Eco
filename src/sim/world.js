@@ -17,6 +17,7 @@
 import {
   GRID_W, GRID_H, TILE_SUB, DOOR_TICKS, T_SOLID, T_ONEWAY, BEAM_HALF,
   T_ICE, T_CONV_L, T_CONV_R, T_GHOST, T_GLASS, CONVEYOR_SPEED, CRUMBLE_TICKS, SPRING_VEL,
+  T_GATE_R, T_GATE_L, T_MIRROR_A, T_MIRROR_B, T_RECEIVER,
 } from './constants.js';
 import { createActor, stepActor, actorInput, bounce } from './actor.js';
 import { createBlock, stepBlock, createPlatform, stepPlatform } from './bodies.js';
@@ -29,8 +30,14 @@ const ICE_HIT = Object.freeze({ kind: 'tile', ice: true });
 const CONV_L_HIT = Object.freeze({ kind: 'tile', dx: -CONVEYOR_SPEED, dy: 0, conveyor: -1 });
 const CONV_R_HIT = Object.freeze({ kind: 'tile', dx: CONVEYOR_SPEED, dy: 0, conveyor: 1 });
 
+/** Tourniquet franchi à contresens ; pont de lumière sous les pieds. */
+const GATE_HIT = Object.freeze({ kind: 'gate' });
+const BRIDGE_HIT = Object.freeze({ kind: 'bridge' });
+
 /** Cases qui arrêtent les faisceaux (les tableaux et vitrines les laissent passer). */
-const OPAQUE = new Set([T_SOLID, T_ICE, T_CONV_L, T_CONV_R]);
+const OPAQUE = new Set([T_SOLID, T_ICE, T_CONV_L, T_CONV_R, T_RECEIVER]);
+/** Nombre maximal de renvois d'un faisceau par des miroirs. */
+const MAX_BOUNCES = 24;
 
 export class World {
   /**
@@ -38,8 +45,10 @@ export class World {
    * @param {{tape: Uint8Array, attempt: number}[]} echoes bandes à rejouer,
    *   de la plus ancienne à la plus récente
    * @param {number} attempt numéro de la tentative en cours
+   * @param {{spawn?: {x:number,y:number}|null, carry?: object|null}} from ce qui
+   *   vient de la tentative précédente : départ du joueur (relais), malles restées en place
    */
-  constructor(level, echoes = [], attempt = 1) {
+  constructor(level, echoes = [], attempt = 1, from = {}) {
     this.level = level;
     /** Capacités du niveau : 'walljump', 'grab', 'dash'. */
     this.abilities = new Set(level.abilities);
@@ -59,17 +68,40 @@ export class World {
     // `open` va de 0 (fermée) à DOOR_TICKS (ouverte).
     this.doors = level.doors.map((d) => ({ ...d, open: 0, target: false, kind: 'door' }));
     this.blocks = level.blocks.map((b, i) => createBlock(b, i));
+    // Les malles restent où la tentative précédente les a laissées.
+    if (from.carry) {
+      this.blocks.forEach((b, i) => {
+        const c = from.carry.blocks[i];
+        if (b.persist && c) { b.x = b.prevX = c.x; b.y = b.prevY = c.y; }
+      });
+    }
+    this.receivers = level.receivers.map((r) => ({ ...r, kind: 'receiver', lit: false, pressed: false, timer: 0 }));
+    for (const r of this.receivers) this.switchById.set(r.id, r);
+    this.mirrors = level.mirrors.map((m) => ({ ...m, flipped: false }));
+    this.mirrorAt = new Map(this.mirrors.map((m) => [m.row * GRID_W + m.col, m]));
+    this.relays = level.relays.map((r) => ({ ...r, active: false }));
     this.platforms = level.platforms.map((p) => createPlatform(p));
     this.lasers = level.lasers.map((l) => ({
-      ...l, linkOn: !l.link, on: !l.link, ex: l.ox, ey: l.oy, hit: null, pressed: false, latched: false,
+      ...l, linkOn: !l.link, on: !l.link, ex: l.ox, ey: l.oy, hit: null, pressed: false, latched: false, segs: [],
     }));
     for (const l of this.lasers) if (l.sensor) this.switchById.set(l.sensor, l);
 
-    this.actors = echoes.map((e, i) => createActor(level.spawn, i, e.tape, e.attempt));
-    this.player = createActor(level.spawn, echoes.length, null, attempt);
+    // Un écho part du départ des échos (« Q ») s'il y en a un ; sinon, de là où
+    // son enregistrement a commencé (relais) ; sinon, du nôtre.
+    this.actors = echoes.map((e, i) => createActor(
+      level.echoSpawn ?? e.spawn ?? level.spawn, i, e.tape, e.attempt, level.echoMirror,
+    ));
+    this.player = createActor(from.spawn ?? level.spawn, echoes.length, null, attempt);
     this.actors.push(this.player);
-    for (const l of this.lasers) if (l.link) l.linkOn = this.linkActive(l.link);
-    for (const pf of this.platforms) pf.active = this.linkActive(pf);
+    // État initial des mécanismes reliés. Les récepteurs éclairés dès le départ
+    // comptent : on laisse la lumière se stabiliser (miroirs, faisceaux reliés).
+    for (let pass = 0; pass < 3; pass++) {
+      this.computeBeams();
+      for (const r of this.receivers) r.pressed = r.lit;
+      for (const m of this.mirrors) m.flipped = this.linkActive(m);
+      for (const l of this.lasers) if (l.link) l.linkOn = this.linkActive(l.link);
+      for (const pf of this.platforms) pf.active = this.linkActive(pf);
+    }
     // Une porte commence dans l'état de ses boutons (une porte inversée, ouverte).
     for (const d of this.doors) {
       d.target = this.linkActive(d);
@@ -130,7 +162,7 @@ export class World {
     // 4. Faisceaux.
     this.computeBeams();
     const p = this.player;
-    if (!p.dead && this.lasers.some((l) => !l.sensor && !l.erase && l.hit === p)) {
+    if (!p.dead && this.lasers.some((l) => !l.sensor && !l.erase && !l.bridge && l.hit === p)) {
       p.dead = true;
       p.vx = 0;
       p.vy = 0;
@@ -175,6 +207,13 @@ export class World {
         }
       }
     }
+    for (const r of this.receivers) {
+      if (r.lit) r.timer = r.hold;
+      else if (r.timer > 0) r.timer--;
+      const pressed = r.lit || r.timer > 0;
+      if (pressed !== r.pressed) { r.pressed = pressed; this.emit(pressed ? 'receiver-on' : 'receiver-off', r); }
+    }
+    for (const rl of this.relays) rl.active = this.relayUnderPlayer() === rl;
     for (const l of this.lasers) {
       if (!l.sensor) continue;
       const cut = l.on && l.hit !== null;
@@ -184,6 +223,10 @@ export class World {
     }
     // 6. Mécanismes reliés.
     for (const d of this.doors) this.updateDoor(d);
+    for (const m of this.mirrors) {
+      const flipped = this.linkActive(m);
+      if (flipped !== m.flipped) { m.flipped = flipped; this.emit('mirror', m); }
+    }
     for (const l of this.lasers) if (l.link) l.linkOn = this.linkActive(l.link);
     for (const pf of this.platforms) {
       const active = this.linkActive(pf);
@@ -249,6 +292,26 @@ export class World {
     return wt.y0 - Math.floor((wt.amp * frac) / half);
   }
 
+  /** Le relais sur lequel le joueur se tient (debout, vivant), ou null. */
+  relayUnderPlayer() {
+    const p = this.player;
+    if (p.dead || !p.onGround) return null;
+    return this.relays.find((r) => overlaps(p, r)) ?? null;
+  }
+
+  /** Ce qui restera pour la tentative suivante : la place des malles. */
+  carryState() {
+    return { blocks: this.blocks.map((b) => (b.persist ? { x: b.x, y: b.y } : null)) };
+  }
+
+  /** Diagonale d'un miroir à cet instant (les miroirs pivotants basculent). */
+  mirrorType(col, row) {
+    const t = this.tileAt(col, row);
+    const m = this.mirrorAt.get(row * GRID_W + col);
+    if (!m || !m.flipped) return t;
+    return t === T_MIRROR_A ? T_MIRROR_B : T_MIRROR_A;
+  }
+
   updateDoor(d) {
     const active = this.linkActive(d);
     if (active !== d.target) {
@@ -305,8 +368,11 @@ export class World {
     for (let r = r0; r <= r1; r++) {
       for (let c = c0; c <= c1; c++) {
         const t = this.tileAt(c, r);
-        if (t === T_SOLID) return TILE_HIT;
+        if (t === T_SOLID || t === T_MIRROR_A || t === T_MIRROR_B || t === T_RECEIVER) return TILE_HIT;
         if (t === T_ICE) return ICE_HIT;
+        // Tourniquets : on n'y entre que par le bon côté.
+        if (t === T_GATE_R && axis === 'x' && delta < 0 && body.x >= (c + 1) * TILE_SUB) return GATE_HIT;
+        if (t === T_GATE_L && axis === 'x' && delta > 0 && body.x + w <= c * TILE_SUB) return GATE_HIT;
         if (t === T_CONV_L) return CONV_L_HIT;
         if (t === T_CONV_R) return CONV_R_HIT;
         if (t === T_GHOST && body.kind !== 'echo') return TILE_HIT;
@@ -332,8 +398,25 @@ export class World {
       if (c.state !== 'gone' && overlaps(rect, c)) return c;
     }
 
+    // Ponts de lumière : les portions horizontales portent, comme une plateforme fine.
+    if (falling) {
+      for (const l of this.lasers) {
+        if (!l.bridge || !l.on) continue;
+        for (const sg of l.segs) {
+          if (sg.dy !== 0) continue;
+          const top = Math.floor(sg.y0 / TILE_SUB) * TILE_SUB;
+          if (oldBottom <= top && newBottom > top && x < Math.max(sg.x0, sg.x1) && x + w > Math.min(sg.x0, sg.x1)) {
+            return BRIDGE_HIT;
+          }
+        }
+      }
+    }
+
     for (const b of this.blocks) {
-      if (b !== body && b !== ignore && overlaps(rect, b)) return b;
+      if (b === body || b === ignore || !overlaps(rect, b)) continue;
+      // Un acteur déjà pris dans une valise (une malle restée sur son départ) peut s'en dégager.
+      if (body.index !== undefined && overlaps(body, b)) continue;
+      return b;
     }
 
     if (body.kind === 'block') {
@@ -358,46 +441,77 @@ export class World {
    * mur, porte, plateforme, valise ou acteur. `hit` désigne le corps touché.
    */
   computeBeams() {
+    // Les corps qui arrêtent un faisceau.
+    const candidates = [
+      ...this.doors.filter((d) => d.open < DOOR_TICKS).map((d) => doorSolidRect(d, d.open)),
+      ...this.platforms,
+      ...this.crumbles.filter((cr) => cr.state !== 'gone'),
+      ...this.blocks,
+      ...this.liveActors(),
+    ];
+    for (const r of this.receivers) r.lit = false;
     for (const l of this.lasers) {
       l.hit = null;
+      l.segs = [];
       const on = this.laserOn(l);
       if (on !== l.on) { l.on = on; this.emit(on ? 'laser-on' : 'laser-off', l); }
-      if (!l.on) { l.ex = l.ox; l.ey = l.oy; continue; }
-      // Jusqu'au premier mur, case par case.
-      let c = Math.floor((l.ox + l.dx) / TILE_SUB);
-      let r = Math.floor((l.oy + l.dy) / TILE_SUB);
-      while (!OPAQUE.has(this.tileAt(c, r))) { c += l.dx; r += l.dy; }
-      let dist; // longueur jusqu'au mur, en sous-pixels
-      if (l.dx > 0) dist = c * TILE_SUB - l.ox;
-      else if (l.dx < 0) dist = l.ox - (c + 1) * TILE_SUB;
-      else if (l.dy > 0) dist = r * TILE_SUB - l.oy;
-      else dist = l.oy - (r + 1) * TILE_SUB;
+      l.ex = l.ox;
+      l.ey = l.oy;
+      if (!l.on) continue;
+      // De miroir en miroir : chaque portion va jusqu'au premier mur, miroir ou corps.
+      let x = l.ox, y = l.oy, dx = l.dx, dy = l.dy;
+      let c = Math.floor((x + dx) / TILE_SUB);
+      let r = Math.floor((y + dy) / TILE_SUB);
+      for (let n = 0; n <= MAX_BOUNCES; n++) {
+        let t = this.tileAt(c, r);
+        while (!OPAQUE.has(t) && t !== T_MIRROR_A && t !== T_MIRROR_B) { c += dx; r += dy; t = this.tileAt(c, r); }
+        const mirror = t === T_MIRROR_A || t === T_MIRROR_B;
+        // Longueur jusqu'à la face du mur, ou jusqu'au centre du miroir.
+        const half = mirror ? TILE_SUB >> 1 : 0;
+        let dist;
+        if (dx > 0) dist = c * TILE_SUB + half - x;
+        else if (dx < 0) dist = x - (c + 1) * TILE_SUB + half;
+        else if (dy > 0) dist = r * TILE_SUB + half - y;
+        else dist = y - (r + 1) * TILE_SUB + half;
 
-      // Puis le corps le plus proche sur la trajectoire.
-      const candidates = [
-        ...this.doors.filter((d) => d.open < DOOR_TICKS).map((d) => doorSolidRect(d, d.open)),
-        ...this.platforms,
-        ...this.crumbles.filter((cr) => cr.state !== 'gone'),
-        ...this.blocks,
-        ...this.liveActors(),
-      ];
-      for (const o of candidates) {
-        const beam = beamRect(l, dist);
-        if (!overlaps(beam, o)) continue;
-        let d;
-        if (l.dx > 0) d = o.x - l.ox;
-        else if (l.dx < 0) d = l.ox - (o.x + o.w);
-        else if (l.dy > 0) d = o.y - l.oy;
-        else d = l.oy - (o.y + o.h);
-        d = Math.max(0, d);
-        if (d < dist || (d === dist && !l.hit)) {
-          dist = d;
-          // Porte, échafaudage : simples obstacles ; corps (acteur, valise, plateforme) : touché.
-          l.hit = o.kind === undefined || o.kind === 'crumble' ? null : o;
+        // Puis le corps le plus proche sur la trajectoire.
+        let stopped = false;
+        const beam = beamRect(x, y, dx, dy, dist);
+        for (const o of candidates) {
+          if (!overlaps(beam, o)) continue;
+          let d;
+          if (dx > 0) d = o.x - x;
+          else if (dx < 0) d = x - (o.x + o.w);
+          else if (dy > 0) d = o.y - y;
+          else d = y - (o.y + o.h);
+          d = Math.max(0, d);
+          if (d < dist || (d === dist && !l.hit)) {
+            dist = d;
+            stopped = true;
+            // Porte, échafaudage : simples obstacles ; corps (acteur, valise, plateforme) : touché.
+            l.hit = o.kind === undefined || o.kind === 'crumble' ? null : o;
+          }
         }
+        const x1 = x + dx * dist, y1 = y + dy * dist;
+        l.segs.push({ x0: x, y0: y, x1, y1, dx, dy });
+        l.ex = x1;
+        l.ey = y1;
+        if (stopped) break;
+        if (!mirror) {
+          if (t === T_RECEIVER) {
+            const rc = this.receivers.find((q) => q.col === c && q.row === r);
+            if (rc) rc.lit = true;
+          }
+          break;
+        }
+        // Renvoi à angle droit : « / » (droite → haut), « \\ » (droite → bas).
+        const a = this.mirrorType(c, r) === T_MIRROR_A;
+        [dx, dy] = a ? [-dy, -dx] : [dy, dx];
+        x = x1;
+        y = y1;
+        c += dx;
+        r += dy;
       }
-      l.ex = l.ox + l.dx * dist;
-      l.ey = l.oy + l.dy * dist;
     }
   }
 }
@@ -422,14 +536,14 @@ function bounceBody(world, o, sp) {
   }
 }
 
-/** Rectangle occupé par un faisceau de longueur `dist`. */
-function beamRect(l, dist) {
-  if (l.dx !== 0) {
-    const x = l.dx > 0 ? l.ox : l.ox - dist;
-    return { x, y: l.oy - BEAM_HALF, w: dist, h: BEAM_HALF * 2 };
+/** Rectangle occupé par une portion de faisceau partant de (ox, oy), de longueur `dist`. */
+function beamRect(ox, oy, dx, dy, dist) {
+  if (dx !== 0) {
+    const x = dx > 0 ? ox : ox - dist;
+    return { x, y: oy - BEAM_HALF, w: dist, h: BEAM_HALF * 2 };
   }
-  const y = l.dy > 0 ? l.oy : l.oy - dist;
-  return { x: l.ox - BEAM_HALF, y, w: BEAM_HALF * 2, h: dist };
+  const y = dy > 0 ? oy : oy - dist;
+  return { x: ox - BEAM_HALF, y, w: BEAM_HALF * 2, h: dist };
 }
 
 /**

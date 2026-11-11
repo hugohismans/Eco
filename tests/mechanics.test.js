@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { parseLevel } from '../src/sim/level.js';
 import { Session } from '../src/sim/session.js';
 import {
-  IN_LEFT, IN_RIGHT, IN_JUMP, IN_DOWN, SUB, TILE, GRID_W, GRID_H, CRUMBLE_TICKS,
+  IN_LEFT, IN_RIGHT, IN_JUMP, IN_DOWN, IN_DASH, SUB, TILE, GRID_W, GRID_H, CRUMBLE_TICKS,
 } from '../src/sim/constants.js';
 
 /** Pièce : lignes données en bas de la grille, ciel au-dessus, sol plein. */
@@ -204,4 +204,146 @@ test('marée : l’eau monte, on se noie ; l’écho, non', () => {
   assert.equal(s.world.player.dead, false, 'marée basse');
   run(s, 0, 80);
   assert.equal(s.world.player.dead, true, 'la marée a monté');
+});
+
+// --- Chapitres 7 à 9 --------------------------------------------------------------
+
+test('reflet : l’écho part de « Q » et rejoue nos gestes à l’envers', () => {
+  const s = new Session(room(['.............E', 'P............Q'], { echo: { mirror: true } }));
+  const x0 = s.world.player.x;
+  run(s, IN_RIGHT, 40);
+  const moved = s.world.player.x - x0;
+  s.replay();
+  const e = s.world.actors[0];
+  assert.equal(px(e.x), 13 * TILE + 3, 'il part de Q');
+  const e0 = e.x;
+  run(s, 0, 40);
+  assert.equal(e.x - e0, -moved, 'même distance, vers la gauche');
+  assert.equal(s.world.player.x, x0, 'nous, on repart de P');
+
+  // Sans « mirror » : les mêmes gestes, d'ailleurs.
+  const t = new Session(room(['.............E', 'P............Q']));
+  run(t, IN_RIGHT, 40);
+  t.replay();
+  const f0 = t.world.actors[0].x;
+  run(t, 0, 40);
+  assert.equal(t.world.actors[0].x - f0, moved);
+});
+
+test('tourniquet : on passe dans un sens, pas dans l’autre', () => {
+  const s = new Session(room(['##############', '....).........', 'P...)........E']));
+  run(s, IN_RIGHT, 120);
+  assert.ok(px(s.world.player.x) > 6 * TILE, 'passé vers la droite');
+  run(s, IN_LEFT, 200);
+  assert.equal(px(s.world.player.x), 5 * TILE, 'arrêté au retour, contre le tourniquet');
+  s.step(IN_LEFT | IN_DASH);
+  run(s, IN_LEFT, 20);
+  assert.equal(px(s.world.player.x), 5 * TILE, 'même en dash');
+
+  const g = new Session(room(['##############', '....(.........', 'P...(........E']));
+  run(g, IN_RIGHT, 120);
+  assert.ok(px(g.world.player.x) < 4 * TILE, 'celui-ci ne s’ouvre que vers la gauche');
+});
+
+test('miroir : le faisceau tourne à angle droit et atteint un récepteur', () => {
+  // L'émetteur tire vers la droite ; le miroir « / » le renvoie vers le haut, dans le récepteur.
+  const lv = room(['......s.......', '..............', '#>..../.......', 'P.........1..E', '..........1..E'].slice(0, 4), {
+    doors: { 1: { buttons: ['s'] } },
+    lasers: [{ col: 1, row: GRID_H - 3, sensor: 'c' }],
+  });
+  const s = new Session(lv);
+  const l = s.world.lasers[0];
+  assert.equal(l.segs.length, 2, 'deux portions');
+  assert.equal(l.segs[1].dy, -1, 'la seconde monte');
+  assert.equal(s.world.receivers[0].pressed, true, 'récepteur éclairé dès le départ');
+  assert.equal(s.world.doors[0].open > 0, true, 'la porte commence ouverte');
+});
+
+test('miroir pivotant : un levier change la route de la lumière', () => {
+  const lv = room(['......s.......', '..............', '#>....\\.......', '..............', '......t.......', 'P.j...#......E'], {
+    mirrors: [{ col: 6, row: GRID_H - 5, buttons: ['j'] }],
+    lasers: [{ col: 1, row: GRID_H - 5, sensor: 'c' }],
+  });
+  const s = new Session(lv);
+  const [top, bottom] = s.world.receivers;
+  assert.equal(bottom.pressed, true, '« \\ » : vers le bas');
+  assert.equal(top.pressed, false);
+  run(s, IN_RIGHT, 22); run(s, 0, 10);
+  s.step(IN_DOWN); run(s, 0, 3);
+  assert.equal(top.pressed, true, 'basculé : vers le haut');
+  assert.equal(bottom.pressed, false);
+});
+
+test('récepteur : un corps dans le faisceau lui fait de l’ombre', () => {
+  const lv = room(['.............E', '>P..........s#'], { lasers: [{ col: 0, row: GRID_H - 2, sensor: 'c' }] });
+  const s = new Session(lv);
+  run(s, 0, 3);
+  assert.equal(s.world.receivers[0].pressed, false, 'le joueur est dans le faisceau');
+});
+
+test('pont de lumière : il porte, et un corps dans le faisceau le coupe', () => {
+  // Le faisceau part de (4, bas-2) vers la droite, au-dessus d'un fossé.
+  const lv = room(['P...>.....#..E', '#####.....####'], { lasers: [{ col: 4, row: GRID_H - 3, bridge: true }] });
+  const s = new Session(lv);
+  // On saute sur l'émetteur, puis on marche sur le pont.
+  run(s, IN_RIGHT, 30);
+  run(s, IN_RIGHT | IN_JUMP, 30);
+  run(s, IN_RIGHT, 40);
+  const p = s.world.player;
+  assert.equal(p.onGround, true);
+  assert.equal(p.y + p.h, (GRID_H - 3) * TILE * SUB, 'debout au ras du haut de la rangée du faisceau');
+  assert.equal(p.dead, false, 'sans danger');
+  assert.ok(px(p.x) > 6 * TILE, 'au-dessus du fossé');
+
+  // Faisceau éteint : pas de pont.
+  const off = new Session(room(['P...>.....#..E', '#####.....####'], {
+    lasers: [{ col: 4, row: GRID_H - 3, bridge: true, cycle: [1, 100000], phase: 5 }],
+  }));
+  run(off, IN_RIGHT, 30);
+  run(off, IN_RIGHT | IN_JUMP, 30);
+  run(off, IN_RIGHT, 60);
+  assert.equal(off.world.player.y + off.world.player.h, (GRID_H - 1) * TILE * SUB, 'tombé au fond du fossé');
+});
+
+test('malle : elle reste où on l’a laissée ; « Effacer » la remet à sa place', () => {
+  const s = new Session(room(['P.M..........E']));
+  const m0 = s.world.blocks[0].x;
+  assert.equal(s.world.blocks[0].persist, true);
+  run(s, IN_RIGHT, 80);
+  const m1 = s.world.blocks[0].x;
+  assert.ok(m1 > m0 + 16 * SUB, 'poussée');
+  s.replay();
+  assert.equal(s.world.blocks[0].x, m1, 'elle n’est pas revenue');
+  // L'écho refait ses gestes : il la rattrape et la pousse encore un peu.
+  run(s, 0, 80);
+  const m2 = s.world.blocks[0].x;
+  assert.ok(m2 > m1, 'l’écho l’a poussée plus loin');
+  s.restart();
+  assert.equal(s.world.blocks[0].x, m0, 'retour à la case départ');
+
+  // Une valise ordinaire, elle, revient toujours.
+  const v = new Session(room(['P.B..........E']));
+  const b0 = v.world.blocks[0].x;
+  run(v, IN_RIGHT, 80);
+  v.replay();
+  assert.equal(v.world.blocks[0].x, b0);
+});
+
+test('relais : « Rejouer » dessus, et la tentative suivante part de là', () => {
+  const s = new Session(room(['P....R.......E']));
+  const p0 = s.world.player.x;
+  run(s, IN_RIGHT, 62); run(s, 0, 10);
+  assert.equal(s.world.relays[0].active, true, 'debout sur le relais');
+  s.replay();
+  assert.equal(px(s.world.player.x), 5 * TILE + 3, 'on repart du relais');
+  assert.equal(s.world.actors[0].x, p0, 'l’écho, lui, part d’où il était parti');
+  run(s, 0, 80);
+  assert.equal(px(s.world.actors[0].x) > 4 * TILE, true, 'et refait son bout de chemin');
+  // Sans relais sous les pieds, on garde le même départ.
+  run(s, IN_RIGHT, 40);
+  s.replay();
+  assert.equal(px(s.world.player.x), 5 * TILE + 3);
+  assert.equal(px(s.world.actors[1].x), 5 * TILE + 3, 'le deuxième écho part du relais');
+  s.restart();
+  assert.equal(s.world.player.x, p0, '« Effacer » ramène au départ');
 });

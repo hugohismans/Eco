@@ -13,6 +13,8 @@ export function createBlock(def, index) {
     kind: 'block',
     id: `B${index}`,
     type: def.type,
+    /** Une malle : elle reste où elle est d'une tentative à l'autre. */
+    persist: !!def.persist,
     x: def.x,
     y: def.y,
     w: def.w,
