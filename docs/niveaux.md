@@ -1,8 +1,8 @@
 # Écho — conception des niveaux
 
-Quatre chapitres de dix pièces. On change d'ambiance à chaque chapitre ; on passe de
-l'un à l'autre en train (ou en métro). La difficulté monte doucement à l'intérieur
-d'un chapitre, et d'un chapitre à l'autre.
+Neuf chapitres de dix pièces. On change d'ambiance à chaque chapitre ; on passe de
+l'un à l'autre en train (ou en métro, en funiculaire). La difficulté monte doucement à
+l'intérieur d'un chapitre, et d'un chapitre à l'autre.
 
 ## Principes
 
@@ -50,7 +50,10 @@ d'un chapitre, et d'un chapitre à l'autre.
 | 3 | La ville | ressorts `S`, échafaudages fragiles `%`, tapis roulants `{ }`, barrières lumineuses (capteurs) et alarmes |
 | 4 | Le musée | tableaux `!` (seuls les échos les traversent), vitrines `?` (seuls les échos s'y heurtent), tout ensemble |
 | 5 | Le train de nuit | plaques lourdes (`weight`), lampe du contrôleur (faisceau `erase` qui efface les échos), vent sur le toit (`winds`), pièces à échos limités (`maxEchoes`) |
-| 6 | La mer | minuteries (`hold`), marée (`water`), tout ensemble ; le dernier train et le choix final |
+| 6 | La mer | minuteries (`hold`), marée (`water`), tout ensemble ; le dernier train |
+| 7 | La fête foraine | échos qui partent d'ailleurs (`Q`), reflets (`echo.mirror`), tourniquets `(` `)` |
+| 8 | L'observatoire | miroirs `/` `\` (fixes ou pivotants), récepteurs `s…z`, ponts de lumière (`bridge`) |
+| 9 | Le retour | malles `M` qui restent en place, relais `R`, de moins en moins d'échos ; le choix final |
 
 ## Chapitre 1 — La gare, la nuit (niveaux 1 à 10, faits)
 
@@ -241,6 +244,144 @@ et la côte (`mer` : la mer et la lune, le phare, la jetée, les rochers). Nouve
     signaux cycliques.
 59. **La marée haute** (`maree-haute`, mer). L'épreuve finale : quatre échos, marée,
     minuteries, plaques lourdes, lampe.
-60. **Le dernier train** (`dernier-train`, terminus, sans chrono). Douce. Le dernier
-    train attend au bout du quai, la mer derrière la verrière. Monter, ou rester sur
-    le banc : deux fins.
+60. **Le dernier train** (`dernier-train`, terminus, sans chrono, fin de chapitre).
+    Douce. Le dernier train attend au bout du quai, la mer derrière la verrière. Il
+    repart le long de la côte, vers les lumières d'une fête.
+
+## Chapitre 7 — La fête foraine (61 à 70)
+
+Une fête foraine sur la jetée, la nuit : guirlandes d'ampoules, grande roue, manège
+(`foire`), et le palais des glaces (`glaces`). Nouveautés :
+
+- **L'autre entrée** : une case `Q` ; les échos partent de là, pas de notre départ.
+  Ils refont nos gestes, ailleurs.
+- **Reflets** : `"echo": {"mirror": true}` ; les échos rejouent nos gestes en inversant
+  la gauche et la droite. Je vais à droite, mon reflet va à gauche. Tout ce qui diffère
+  entre son côté et le mien (une marche, un mur, un tourniquet) le fait diverger.
+- **Tourniquets** `)` et `(` : on ne les franchit que dans un sens. Ce qui me laisse
+  passer arrête mon reflet.
+
+Ce qu'on fait découvrir : *se rejoindre au milieu* ; *mimer* (sauter par-dessus rien,
+attendre sans raison, pour que le reflet franchisse ce qu'il a de son côté) ; *aller
+là-bas pour qu'il vienne ici*.
+
+61. **L'autre entrée** (`autre-entree`, foire). Deux allées séparées par une palissade.
+    L'écho part de `Q`, dans l'autre allée, et refait nos pas : on marche de ce côté
+    jusqu'au repère, il s'arrête sur le bouton de l'autre.
+62. **Le palais des glaces** (`palais-glaces`, glaces). Premier reflet, salle
+    symétrique. Le bouton n'existe que de son côté : on va se placer là où serait le
+    bouton, du nôtre.
+63. **Face à face** (`face-a-face`, glaces). La sortie est en hauteur, au milieu. On
+    marche jusqu'au centre ; le reflet aussi. Sa tête devient la marche.
+64. **Les tourniquets** (`tourniquets`, foire). Mon tourniquet me laisse passer ; le
+    sien l'arrête, juste sur un bouton. Peu importe combien de temps je marche.
+65. **Les miroirs déformants** (`miroirs-deformants`, glaces). Les deux côtés ne se
+    ressemblent plus : le sien a un escalier, le mien est plat. Il faut sauter au bon
+    endroit, par-dessus rien, pour qu'il monte.
+66. **Le train fantôme** (`train-fantome`, foire). Sa porte s'ouvre avec une plaque de
+    mon côté, la mienne avec un bouton du sien : je lui tiens la porte en direct, puis
+    il me tient la mienne.
+67. **La grande roue** (`grande-roue`, foire). Deux nacelles (plateformes en boucle)
+    qui ne montent pas en même temps. Pour qu'il prenne la sienne, je dois sauter
+    quand SA nacelle passe, pas la mienne : mimer, en rythme.
+68. **L'envers du décor** (`envers`, glaces). Il me faut une marche de MON côté : pour
+    que mon reflet vienne ici, je dois aller me placer là-bas.
+69. **La galerie des glaces** (`galerie-glaces`, glaces). L'épreuve : trois reflets,
+    une leçon chacun (venir ici, être arrêté par un tourniquet, mimer), et l'ordre
+    compte (on ne monte que sur un plus ancien).
+70. **Le funiculaire** (`funiculaire`, foire, sans chrono, fin de chapitre). Douce.
+    Deux plaques, une à chaque bout : chaque reflet est là où je n'étais pas. On
+    croise. Le funiculaire monte vers l'observatoire.
+
+## Chapitre 8 — L'observatoire (71 à 80)
+
+Sur la colline, sous la Voie lactée (`colline`), puis sous la coupole, parmi les
+instruments de laiton (`coupole`). Nouveautés, toutes de lumière :
+
+- **Miroirs** `/` et `\` : des cases pleines qui renvoient les faisceaux à angle droit.
+  Un miroir **pivotant** (`"mirrors"`) bascule d'une diagonale à l'autre quand son lien
+  (bouton, levier, récepteur) est actif.
+- **Récepteurs** `s t u w x y z` : actifs tant qu'un faisceau les atteint. Tout corps
+  placé dans le faisceau leur fait de l'ombre : un écho est un volet qu'on pose.
+- **Ponts de lumière** : faisceau `"bridge": true`, sans danger ; ses portions
+  horizontales portent comme une plateforme fine, au ras du haut de leur rangée. Un
+  corps DANS le faisceau le coupe : le pont s'arrête là, et ce qui était posé plus loin
+  tombe.
+
+À savoir : un faisceau passe à mi-hauteur de sa rangée. Dans la rangée où l'on a les
+pieds, il traverse le corps ; dans la rangée juste au-dessus, il passe à 1 px de la
+tête (il n'est coupé que si l'on saute).
+
+71. **La passerelle** (`passerelle`, colline). Un pont de lumière au-dessus du ravin,
+    allumé tant qu'une plaque est tenue. L'écho allume, on marche sur la lumière.
+72. **L'ombre portée** (`ombre-portee`, coupole). Un récepteur éclairé tient la porte
+    fermée. Le faisceau qui l'éclaire nous tuerait ; un écho lâché dedans (« Rejouer »
+    en plein vol) lui fait de l'ombre.
+73. **Le miroir tournant** (`miroir-tournant`, coupole). Le faisceau tombe sur un
+    miroir pivotant : pont vers la gauche, ou pont vers la droite. Le levier est sur
+    l'îlot de gauche : celui qui bascule reste de l'autre côté.
+74. **La trappe de lumière** (`trappe`, coupole). La sortie est SOUS le pont de
+    lumière, au milieu du vide. On s'arrête au-dessus ; l'écho vient se mettre dans le
+    faisceau, en amont : le pont s'efface sous nos pieds.
+75. **L'escalier de lumière** (`escalier-lumiere`, colline). Trois ponts, trois plaques
+    à minuterie, un seul écho : il allume les marches l'une après l'autre, au rythme
+    où l'on monte.
+76. **La persistance** (`persistance`, coupole). Une seule lumière, deux récepteurs à
+    rémanence, une porte qui veut les deux. Un écho resté au levier fait aller et
+    venir le miroir : il jongle.
+77. **Le planétaire** (`planetaire`, coupole). Deux miroirs pivotants, un faisceau
+    mortel. Lire le trajet de la lumière : la plaque qui la détourne est au milieu du
+    feu ; seul un écho peut y aller.
+78. **Le verrou de lumière** (`verrou`, coupole). Une porte que sa propre lumière tient
+    ouverte : le faisceau passe par l'ouverture et atteint le récepteur qui l'ouvre.
+    Un appui suffit… jusqu'à ce que quelqu'un saute dans le rayon. L'écho, en allant à
+    son poste, le coupe : c'est à nous d'armer le verrou, après son passage.
+79. **La chambre noire** (`chambre-noire`, coupole). L'épreuve : ombre, miroir, pont
+    coupé ; trois échos.
+80. **La grande lunette** (`grande-lunette`, coupole, sans chrono, fin de chapitre).
+    Douce. On aligne deux miroirs ; la lumière d'une étoile ouvre la coupole. En bas,
+    le premier train du matin.
+
+## Chapitre 9 — Le retour (81 à 90)
+
+La première gare, à l'aube (`aube` : le quai sous un ciel rose ; `matin` : le hall, le
+soleil dans les vitres). On n'a plus ni dash, ni escalade, ni saut au mur : on marche
+et on saute, comme au début. Et les échos se font rares. Nouveautés :
+
+- **Malles** `M` : des blocs poussables qui ne reviennent pas à leur place. D'une
+  tentative à l'autre, une malle reste où on l'a laissée (« Effacer » remet tout en
+  place). Un écho qui a poussé la malle la repousse à chaque fois.
+- **Relais** `R` : si l'on « rejoue » (ou si le temps s'écoule) debout dessus, la
+  tentative suivante part de là. Chaque écho repart d'où son enregistrement a commencé.
+- Ce qu'on fait découvrir : *le travail des échos oubliés reste* (avec `maxEchoes`,
+  les vieilles bandes disparaissent, pas ce qu'elles ont déplacé) ; *l'ordre dans
+  lequel on enregistre* (une bande ne vit que quelques tentatives).
+
+81. **Le quai, à l'aube** (`quai-aube`, aube). Aucun écho (`maxEchoes` 0), quatre
+    secondes. La malle doit aller jusqu'à la plaque, trop loin pour une seule vie.
+    Elle reste où on la laisse.
+82. **La correspondance** (`correspondance`, matin). Premier relais. Une plaque à
+    minuterie près du départ ouvre une grille tout au bout, trop loin. On s'arrête sur
+    le relais ; à la tentative suivante on part de là, et l'écho du premier trajet
+    repasse sur la plaque, à la même seconde.
+83. **Le marchepied** (`marchepied`, aube). Un seul écho. La malle, poussée au pied du
+    premier mur par des tentatives qu'on oubliera, reste une marche pour tout le
+    monde ; il en faut une seconde, plus loin : la tête de l'écho.
+84. **Le portillon** (`portillon`, matin). Le relais est derrière un tourniquet : on
+    n'en revient pas. L'écho qui tient la plaque d'avant doit être enregistré AVANT de
+    partir ; et il ne vivra qu'une tentative de plus (`maxEchoes` 2).
+85. **La salle des pas perdus** (`pas-perdus-matin`, matin). Un seul écho. La malle
+    doit rester SUR la plaque, mais l'écho qui l'y a poussée la repousse plus loin.
+    Il faut une tentative pour le retenir : se mettre en travers.
+86. **Les deux quais** (`deux-quais`, aube). Le relais d'abord, les aides ensuite : la
+    bande du trajet ne sert à rien, autant qu'elle soit la première oubliée.
+87. **Seul** (`seul`, aube). Aucun écho. Deux malles, des relais, des vies de cinq
+    secondes : une malle au fond du fossé pour passer, l'autre sur la plaque.
+88. **La consigne** (`consigne-matin`, matin). Le coffre : une aide dehors (avant), le
+    relais dedans, une aide dedans. Trois échos, pas un de plus, et une seule
+    tentative où tous les trois existent.
+89. **Le premier train** (`premier-train`, aube). L'épreuve : malle, cale, relais, un
+    seul écho.
+90. **Le quai** (`quai-matin`, aube, sans chrono). La fin, douce. Le premier train du
+    matin ; sa porte s'ouvre quand on est cinq sur le marchepied : soi, et ses quatre
+    échos. Monter tous ensemble, ou rester sur le banc : deux fins.

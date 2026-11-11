@@ -173,9 +173,9 @@ test('chapitre 6 : dix pièces bien formées', () => {
       assert.equal(def.exitStyle, 'train');
       assert.ok(def.decor.some((d) => d.type === 'train' && d.variant === 'nuit' && d.layer === 'front'));
       assert.ok(def.decor.some((d) => d.type === 'bench'));
-      assert.ok(level.stay, 'une zone « rester »');
-      assert.equal(def.endings.exit, 'Cette fois, je monte. (provisoire)');
-      assert.equal(def.endings.stay, 'Je reste. La mer est douce, la nuit. (provisoire)');
+      // Le choix final (monter ou rester) est passé au niveau 90 : ici, on change de chapitre.
+      assert.equal(level.chapterEnd, true);
+      assert.equal(level.stay, null);
     } else {
       assert.ok(def.duration > 0, file);
     }
@@ -831,7 +831,7 @@ test('60 dernier train : sans chrono ; un écho et soi sur la plaque, la minuter
   assert.equal(s.outcome, 'exit');
 });
 
-test('60 dernier train : seul, la grille reste fermée ; on peut aussi rester sur le banc', () => {
+test('60 dernier train : seul, la grille reste fermée', () => {
   const s = new Session(load('60-dernier-train.json'));
   const bot = new Bot(s);
   bot.walkTo(colCenter(7));
@@ -839,9 +839,5 @@ test('60 dernier train : seul, la grille reste fermée ; on peut aussi rester su
   assert.equal(button(s, 'a').pressed, false, 'un seul corps');
   bot.holdUntil(R, () => bot.cx > colCenter(15), 200);
   assert.ok(bot.cx < colCenter(15), 'la grille est fermée');
-  // Le banc : Bas, et l'on reste.
-  bot.walkTo(colCenter(10) + 8);
-  bot.step(D);
-  assert.equal(s.outcome, 'stay');
-  assert.equal(s.state, 'won');
+  assert.equal(s.state, 'playing');
 });
