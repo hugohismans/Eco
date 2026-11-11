@@ -30,6 +30,6 @@
     {"type": "pendant", "col": 6, "row": 8, "cable": 30},
     {"type": "bench", "col": 15, "row": 12},
     {"type": "lamp", "col": 2, "row": 8},
-    {"type": "clock", "col": 21, "row": 8}
+    {"type": "clock", "col": 10, "row": 7}
   ]
 }

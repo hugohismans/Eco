@@ -4,7 +4,7 @@
   "theme": "matin",
   "chapter": 9,
   "narration": "Trois souvenirs à la fois, pas un de plus : je choisis lesquels. (provisoire)",
-  "duration": 6,
+  "duration": 5.5,
   "abilities": [],
   "maxEchoes": 3,
   "doors": {"1": {"buttons": ["a"]}, "2": {"buttons": ["b"]}},
@@ -21,7 +21,7 @@
     "#..#.#.....................#",
     "#..#.#.....................#",
     "#E.2.1.....................#",
-    "#E.2.1b.............R......#",
+    "#E.2.1b............R.......#",
     "############################"
   ],
   "decor": [

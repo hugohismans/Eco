@@ -25,7 +25,7 @@
     "############################"
   ],
   "decor": [
-    {"type": "sign", "col": 7, "row": 8, "text": "ACCÈS"},
+    {"type": "sign", "col": 7, "row": 8, "text": "QUAIS"},
     {"type": "window", "col": 2, "row": 3, "cols": 4, "rows": 4},
     {"type": "window", "col": 16, "row": 3, "cols": 4, "rows": 4},
     {"type": "bench", "col": 5, "row": 12},
