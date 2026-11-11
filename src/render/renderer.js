@@ -14,7 +14,7 @@
 // L'écran final est à la résolution de l'appareil : chaque pixel du jeu y est
 // un carré de N × N pixels, et la lumière, elle, y est parfaitement douce.
 
-import { TILE, SUB, DOOR_TICKS } from '../sim/constants.js';
+import { TILE, SUB, TILE_SUB, DOOR_TICKS } from '../sim/constants.js';
 import { C, ECHO_TINTS } from './palette.js';
 import { makeCanvas, rect, px, textSprite } from './pixel.js';
 import { VIEW_W, VIEW_H, LEVEL_Y, view as screenView, sceneBounds } from './screen.js';
@@ -30,6 +30,8 @@ const TRAIL_LEN = 14;
 const SENSOR = '#6ad2ff';
 /** Lampe du contrôleur : une lumière pâle, qui efface les échos. */
 const ERASER = '#fff0c0';
+/** Pont de lumière : une nappe turquoise sur laquelle on marche. */
+const BRIDGE = '#7ef0d8';
 const TRAIL_EVERY = 2; // ticks entre deux échantillons de traînée
 
 export class Renderer {
@@ -112,7 +114,7 @@ export class Renderer {
     for (const b of world.buttons) this.drawButton(P, E, b, lights);
     for (const d of world.doors) this.drawDoor(P, E, d, lights);
     for (const pf of world.platforms) this.drawPlatform(P, E, pf, alpha, lights, t);
-    drawElements(P, E, world, lights, t);
+    drawElements(P, E, world, lights, t, session.spawn);
 
     const occluders = [];
     for (const b of world.blocks) this.drawBlock(P, E, b, alpha, occluders);
@@ -410,6 +412,19 @@ export class Renderer {
       }
       rect(P, x, y, 1, h, C.wood0);
       rect(P, x + w - 1, y, 1, h, C.wood0);
+    } else if (b.type === 'malle') {
+      // La malle : cuir sombre, cerclée de laiton ; son cadenas luit doucement
+      // (elle ne revient pas à sa place d'une tentative à l'autre).
+      rect(P, x, y, w, h, '#2e4a4a');
+      rect(P, x, y, w, 2, '#4a6a66');
+      rect(P, x, y + h - 2, w, 2, '#1c3030');
+      rect(P, x, y + 4, w, 1, C.brass);
+      rect(P, x + 2, y, 2, h, C.brass);
+      rect(P, x + w - 4, y, 2, h, C.brass);
+      for (const [cx, cy] of [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]]) px(P, x + cx, y + cy, C.paper3);
+      rect(P, x + (w >> 1) - 1, y + 5, 3, 4, C.brass);
+      rect(E, x + (w >> 1) - 1, y + 6, 3, 2, C.lamp3);
+      px(E, x + (w >> 1), y + 7, C.lamp4);
     } else {
       // Poignée.
       rect(P, x + 4, y - 2, 6, 1, C.wood0);
@@ -469,8 +484,8 @@ export class Renderer {
       const lx = cx + l.dx * 5, ly = cy + l.dy * 5;
       rect(P, lx - 2, ly - 2, 4, 4, C.iron0);
       // Barrière lumineuse (capteur) : bleue ; alarme déclenchée : rouge qui clignote.
-      const col = l.erase ? ERASER : l.sensor ? (l.latched ? C.signalRed : SENSOR) : C.signalRed;
-      const dim = l.erase ? '#3a3420' : l.sensor ? '#103040' : '#401010';
+      const col = l.bridge ? BRIDGE : l.erase ? ERASER : l.sensor ? (l.latched ? C.signalRed : SENSOR) : C.signalRed;
+      const dim = l.bridge ? '#183a38' : l.erase ? '#3a3420' : l.sensor ? '#103040' : '#401010';
       const core = l.erase ? '#ffffff' : '#ffd0c8';
       // Faisceau cyclique : la lentille clignote juste avant de s'allumer.
       let warn = false;
@@ -485,34 +500,63 @@ export class Renderer {
         lights.push({ x: cx, y: cy - 10, r: 90, color: C.signalRed, intensity: 0.5, flicker: 0, shadows: false, halo: 0.5 });
       }
       if (!l.on) continue;
-      const ox = l.ox / SUB, oy = l.oy / SUB + LEVEL_Y;
-      const ex = l.ex / SUB, ey = l.ey / SUB + LEVEL_Y;
       const shimmer = 0.75 + 0.25 * Math.sin(t * 40);
-      if (l.dx !== 0) {
-        const x0 = Math.min(ox, ex), len = Math.abs(ex - ox);
-        E.globalAlpha = shimmer * (l.sensor ? 0.7 : 1);
-        rect(E, x0, oy - 1, len, l.sensor ? 1 : 2, col);
-        if (!l.sensor) rect(E, x0, oy, len, 1, core);
-      } else {
-        const y0 = Math.min(oy, ey), len = Math.abs(ey - oy);
-        E.globalAlpha = shimmer * (l.sensor ? 0.7 : 1);
-        rect(E, ox - 1, y0, l.sensor ? 1 : 2, len, col);
-        if (!l.sensor) rect(E, ox, y0, 1, len, core);
+      const thin = l.sensor || l.bridge;
+      // De miroir en miroir : chaque portion du faisceau.
+      for (const sg of l.segs) {
+        const ox = sg.x0 / SUB, oy = sg.y0 / SUB + LEVEL_Y;
+        const ex = sg.x1 / SUB, ey = sg.y1 / SUB + LEVEL_Y;
+        const len = Math.abs(ex - ox) + Math.abs(ey - oy);
+        if (len <= 0) continue;
+        E.globalAlpha = shimmer * (thin ? 0.7 : 1);
+        if (sg.dx !== 0) {
+          const x0 = Math.min(ox, ex);
+          rect(E, x0, oy - 1, len, thin ? 1 : 2, col);
+          if (!thin) rect(E, x0, oy, len, 1, core);
+          if (l.bridge) {
+            // La nappe : du haut de la rangée (là où l'on marche) jusqu'au rayon.
+            const top = Math.floor(sg.y0 / TILE_SUB) * TILE + LEVEL_Y;
+            E.globalAlpha = 0.16;
+            rect(E, x0, top, len, oy - top, col);
+            E.globalAlpha = 0.95;
+            rect(E, x0, top, len, 1, '#e8fff8');
+            E.globalAlpha = 0.55;
+            rect(E, x0, top + 1, len, 1, col);
+            // Des paillettes glissent le long du pont.
+            for (let i = 0; i < len / 14; i++) {
+              const k = (i * 14 + t * 22 * sg.dx + 4000) % len;
+              E.globalAlpha = 0.5 + 0.4 * Math.sin(t * 5 + i);
+              px(E, Math.round(x0 + k), top + 2 + (i % 3), '#e8fff8');
+            }
+            for (let d = 10; d < len; d += 32) {
+              lights.push({ x: x0 + d, y: top, r: 26, color: col, intensity: 0.3, flicker: 0, shadows: false, halo: 0 });
+            }
+          }
+        } else {
+          const y0 = Math.min(oy, ey);
+          rect(E, ox - 1, y0, thin ? 1 : 2, len, col);
+          if (!thin) rect(E, ox, y0, 1, len, core);
+        }
+        E.globalAlpha = 1;
+        volumes.push({ type: 'beam', x0: ox, y0: oy, x1: ex, y1: ey, color: col, alpha: l.sensor ? 0.2 : l.bridge ? 0.22 : 0.35 });
+        if (!l.bridge) {
+          for (let d = 12; d < len; d += 28) {
+            lights.push({ x: ox + sg.dx * d, y: oy + sg.dy * d, r: 24, color: col, intensity: l.sensor ? 0.2 : 0.35, flicker: 0, shadows: false, halo: 0 });
+          }
+        }
       }
-      E.globalAlpha = 1;
       // Étincelles au point d'impact.
-      for (let i = 0; i < 5; i++) {
-        const a = t * 9 + i * 1.7;
-        const r = (Math.sin(a * 1.3) + 1) * 2;
-        if (l.sensor && !l.hit) break;
-        px(E, Math.round(ex - l.dx * 1 + Math.cos(a) * r * (l.dx ? 0.5 : 1)), Math.round(ey - l.dy + Math.sin(a) * r), i % 2 ? C.lamp4 : col);
+      const last = l.segs[l.segs.length - 1];
+      if (last) {
+        const ex = l.ex / SUB, ey = l.ey / SUB + LEVEL_Y;
+        for (let i = 0; i < 5; i++) {
+          const a = t * 9 + i * 1.7;
+          const r = (Math.sin(a * 1.3) + 1) * 2;
+          if ((l.sensor || l.bridge) && !l.hit) break;
+          px(E, Math.round(ex - last.dx + Math.cos(a) * r * (last.dx ? 0.5 : 1)), Math.round(ey - last.dy + Math.sin(a) * r), i % 2 ? C.lamp4 : col);
+        }
+        lights.push({ x: ex, y: ey, r: 30, color: col, intensity: thin ? 0.35 : 0.7, flicker: 0, shadows: false, halo: 0.6 });
       }
-      volumes.push({ type: 'beam', x0: ox, y0: oy, x1: ex, y1: ey, color: col, alpha: l.sensor ? 0.2 : 0.35 });
-      const len = Math.hypot(ex - ox, ey - oy);
-      for (let d = 12; d < len; d += 28) {
-        lights.push({ x: ox + (l.dx * d), y: oy + (l.dy * d), r: 24, color: col, intensity: l.sensor ? 0.2 : 0.35, flicker: 0, shadows: false, halo: 0 });
-      }
-      lights.push({ x: ex, y: ey, r: 30, color: col, intensity: l.sensor ? 0.35 : 0.7, flicker: 0, shadows: false, halo: 0.6 });
     }
   }
 

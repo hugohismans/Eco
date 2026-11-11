@@ -113,6 +113,9 @@ export const DECOR = {
   /** Haute fenêtre cintrée : nuit dehors, rai de lune qui descend en biais. */
   window(d, level, A, Em, out) {
     if (level.theme === 'wagon') return trainWindow(d, level, A, Em, out);
+    // Au petit matin, le ciel est rose derrière les vitres et le soleil entre.
+    const dawn = level.theme === 'matin' || level.theme === 'aube';
+    const sky = dawn ? ['#4a2c40', '#6e4434', '#c89068', '#ffd0a0', '#ffc8a0'] : [C.night1, C.night2, C.night5, C.moon1, C.moon0];
     const x = cellX(d), y = cellY(d);
     const w = (d.cols ?? 2) * TILE, h = (d.rows ?? 4) * TILE;
     const fy = floorY(level, d.col, d.row + (d.rows ?? 4));
@@ -128,8 +131,8 @@ export const DECOR = {
     const pane = (px0, py0, pw, ph) => {
       // Le verre est sombre dans l'albedo : sa lueur vient seulement de l'émissif.
       rect(A, px0, py0, pw, ph, C.ink);
-      rect(Em, px0, py0, pw, ph, C.night1);
-      checker(Em, px0, py0 + Math.floor(ph * 0.5), pw, Math.ceil(ph * 0.5), C.night2);
+      rect(Em, px0, py0, pw, ph, sky[0]);
+      checker(Em, px0, py0 + Math.floor(ph * 0.5), pw, Math.ceil(ph * 0.5), sky[1]);
     };
     for (let k = 0; k < 4; k++) {
       const inset = Math.round(5 - Math.sqrt(25 - (5 - k) * (5 - k)));
@@ -137,17 +140,18 @@ export const DECOR = {
     }
     pane(x, y + 4, w, h - 5);
     // Reflet de lune sur le verre.
-    for (let k = 0; k < 5; k++) px(Em, x + 3 + k, y + 8 + k, C.night5);
-    for (let k = 0; k < 3; k++) px(Em, x + 5 + k, y + 8 + k, C.night5);
+    for (let k = 0; k < 5; k++) px(Em, x + 3 + k, y + 8 + k, sky[2]);
+    for (let k = 0; k < 3; k++) px(Em, x + 5 + k, y + 8 + k, sky[2]);
     // Meneaux (ils masquent l'émissif).
     for (const ctx of [A, Em]) {
       const col = ctx === A ? C.iron1 : '#000';
       rect(ctx, x + (w >> 1) - 1, y, 2, h, col);
       for (let k = y + 14; k < y + h - 2; k += 14) rect(ctx, x, k, w, 1, col);
     }
-    out.lights.push({ x: x + w / 2, y: y + h - 4, r: 48, color: C.moon0, intensity: 0.3, flicker: 0, shadows: false, halo: 0.12 });
-    out.volumes.push({ type: 'shaft', x0: x, x1: x + w, y0: y + 6, y1: fy, slant: d.slant ?? 0.45, color: C.moon1, alpha: 0.13, dust: 9 });
-    out.lights.push({ x: x + w / 2 + (fy - y) * (d.slant ?? 0.45) * 0.8, y: fy - 6, r: 34, color: C.moon0, intensity: 0.3, flicker: 0, shadows: false, halo: 0 });
+    const k = dawn ? 1.8 : 1;
+    out.lights.push({ x: x + w / 2, y: y + h - 4, r: 48 * k, color: sky[4], intensity: 0.3 * k, flicker: 0, shadows: false, halo: 0.12 });
+    out.volumes.push({ type: 'shaft', x0: x, x1: x + w, y0: y + 6, y1: fy, slant: d.slant ?? 0.45, color: sky[3], alpha: dawn ? 0.2 : 0.13, dust: 9 });
+    out.lights.push({ x: x + w / 2 + (fy - y) * (d.slant ?? 0.45) * 0.8, y: fy - 6, r: 34 * k, color: sky[4], intensity: 0.3 * k, flicker: 0, shadows: false, halo: 0 });
   },
 
   /** Horloge de gare : toujours 23 h 58, juste avant le dernier train. */
@@ -168,7 +172,9 @@ export const DECOR = {
     const hand = (angle, len, col) => {
       for (let i = 0; i <= len; i++) px(A, cx + Math.round(Math.sin(angle) * i), cy - Math.round(Math.cos(angle) * i), col);
     };
-    hand(-0.03 * Math.PI * 2, 3, C.iron0);
+    // 23 h 58 la nuit ; au retour, à l'aube, 5 h 58.
+    const dawn = level.theme === 'aube' || level.theme === 'matin';
+    hand((dawn ? (5 + 58 / 60) / 12 : -0.03) * Math.PI * 2, 3, C.iron0);
     hand((58 / 60) * Math.PI * 2, 5, C.iron0);
     px(A, cx, cy, C.signalRed);
     rect(A, cx - 1, cy - 12, 2, 4, C.iron1);
@@ -410,6 +416,8 @@ export const DECOR = {
       montagne: ['#a8443a', '#6e2a24', '#8a362e', C.paper3],
       metro: ['#4f7a66', '#2e4a3e', '#3e6152', C.paper2],
       ancien: ['#6b4024', '#3a2214', '#4a2c1a', C.brass],
+      funiculaire: ['#b8863a', '#6e4a1c', '#8c6228', '#f4e4c0'],
+      matin: ['#c8beb0', '#6a5a70', '#8a7a8c', '#b0483a'],
     };
     const [body, roof, roof2, band] = TRAIN_COLORS[d.variant ?? 'nuit'] ?? TRAIN_COLORS.nuit;
     rect(A, x0 + 2, y0 + 6, w, floor - y0 - 6, body);
@@ -717,6 +725,186 @@ Object.assign(DECOR, {
     rect(Em, cx - 1, base - 20, 2, 2, '#ff6a50');
     const phase = (d.col * 0.37) % 1;
     out.lights.push({ x: cx, y: base - 19, r: 46, color: '#ff6a50', intensity: 0.8, flicker: 0, shadows: false, halo: 1, blink: 2.4, blinkPhase: phase * 2.4 });
+  },
+
+  // --- Chapitre 7 : la fête foraine ------------------------------------------------
+  /** Guirlande d'ampoules de couleur, tendue sur `cols` cases. */
+  garland(d, level, A, Em, out) {
+    const x0 = cellX(d), y = cellY(d) + 1;
+    const w = (d.cols ?? 6) * TILE;
+    const tints = [C.lamp2, '#ff7a9a', '#7ad8ff', C.lamp4, '#b08aff'];
+    for (let k = 0; k <= w; k++) {
+      const sag = Math.round(Math.sin((k / w) * Math.PI) * 6);
+      px(A, x0 + k, y + sag, C.iron1);
+      if (k % 8 === 4) {
+        const col = tints[(k >> 3) % tints.length];
+        rect(A, x0 + k - 1, y + sag + 1, 2, 3, C.iron0);
+        rect(Em, x0 + k - 1, y + sag + 2, 2, 2, col);
+        if (k % 32 === 4) out.lights.push({ x: x0 + k, y: y + sag + 3, r: 34, color: col, intensity: 0.45, flicker: seedCounter++, shadows: false, halo: 0.7 });
+      }
+    }
+  },
+
+  /** Grande roue au loin : jante, rayons, nacelles éclairées. (col, row) = le centre. */
+  wheel(d, level, A, Em, out) {
+    const cx = cellX(d) + 8, cy = cellY(d) + 8;
+    const R = (d.r ?? 4) * TILE;
+    const fy = LEVEL_Y + 13 * TILE;
+    // Pylône en A.
+    for (let k = 0; k < fy - cy; k++) {
+      const off = Math.round(k * 0.3);
+      px(A, cx - off, cy + k, '#1a1e3c'); px(A, cx + off, cy + k, '#1a1e3c');
+    }
+    for (let a = 0; a < 360; a += 2) {
+      const rad = (a * Math.PI) / 180;
+      px(A, Math.round(cx + Math.cos(rad) * R), Math.round(cy + Math.sin(rad) * R), '#2a3060');
+      px(A, Math.round(cx + Math.cos(rad) * (R - 4)), Math.round(cy + Math.sin(rad) * (R - 4)), '#20264c');
+    }
+    const tints = [C.lamp2, '#ff7a9a', '#7ad8ff', C.lamp4];
+    for (let i = 0; i < 12; i++) {
+      const rad = (i * Math.PI) / 6 + 0.26;
+      const ex = cx + Math.cos(rad) * R, ey = cy + Math.sin(rad) * R;
+      for (let k = 0; k < R; k += 1) px(A, Math.round(cx + Math.cos(rad) * k), Math.round(cy + Math.sin(rad) * k), '#20264c');
+      // Nacelle suspendue.
+      rect(A, Math.round(ex) - 3, Math.round(ey) + 1, 7, 5, '#3a2a5e');
+      rect(Em, Math.round(ex) - 2, Math.round(ey) + 2, 5, 2, tints[i % tints.length]);
+      for (let k = 6; k < R; k += 9) px(Em, Math.round(cx + Math.cos(rad) * k), Math.round(cy + Math.sin(rad) * k), tints[(i + (k >> 3)) % tints.length]);
+    }
+    rect(A, cx - 2, cy - 2, 5, 5, '#3a4070');
+    px(Em, cx, cy, C.lamp4);
+    out.lights.push({ x: cx, y: cy, r: R * 1.6, color: '#ff9ab0', intensity: 0.22, flicker: 0, shadows: false, halo: 0.25 });
+  },
+
+  /** Manège de chevaux de bois : toit rayé, mât torsadé, ampoules. Posé au bas de sa case. */
+  carousel(d, level, A, Em, out) {
+    const x = cellX(d), fy = cellY(d) + TILE;
+    const w = (d.cols ?? 5) * TILE, top = fy - 46;
+    // Toit conique rayé.
+    for (let k = 0; k < 14; k++) {
+      const half = Math.round(6 + ((w / 2 - 2) * k) / 13);
+      for (let i = -half; i < half; i++) px(A, x + w / 2 + i, top + k, (Math.floor((i + 200) / Math.max(2, half / 4)) & 1) ? '#b0483a' : C.paper3);
+    }
+    rect(A, x, top + 14, w, 3, C.brass);
+    for (let k = 3; k < w - 2; k += 6) { px(Em, x + k, top + 17, k % 12 === 3 ? C.lamp3 : '#ff9ab0'); }
+    rect(A, x + w / 2 - 1, top - 4, 2, 4, C.brass);
+    // Plateau, mâts, chevaux.
+    rect(A, x + 2, fy - 4, w - 4, 4, '#6e2630');
+    rect(A, x + 2, fy - 4, w - 4, 1, C.brass);
+    for (let k = 0; k < 3; k++) {
+      const mx = x + 10 + (k * (w - 20)) / 2;
+      rect(A, mx, top + 17, 1, fy - top - 21, C.brass);
+      const hy = fy - 18 + (k & 1) * 4;
+      rect(A, mx - 5, hy, 10, 5, k === 1 ? '#e8dcc0' : '#8a6a4a');
+      rect(A, mx + 4, hy - 4, 3, 5, k === 1 ? '#e8dcc0' : '#8a6a4a');
+      rect(A, mx - 4, hy + 5, 1, 4, C.wood1); rect(A, mx + 3, hy + 5, 1, 4, C.wood1);
+      px(A, mx + 6, hy - 3, C.ink);
+    }
+    out.lights.push({ x: x + w / 2, y: top + 22, r: 70, color: C.lamp2, intensity: 0.7, flicker: seedCounter++, shadows: false, halo: 0.5 });
+  },
+
+  /** Stand forain : auvent rayé, comptoir, lots accrochés. Posé au bas de sa case. */
+  stall(d, level, A, Em, out) {
+    const x = cellX(d), fy = cellY(d) + TILE;
+    const w = (d.cols ?? 3) * TILE, top = fy - 40;
+    const v = (d.variant ?? 0) % 3;
+    const stripe = ['#b0483a', '#3a6a9a', '#5a8a56'][v];
+    rect(A, x + 1, top + 8, 2, 32, C.wood1);
+    rect(A, x + w - 3, top + 8, 2, 32, C.wood1);
+    rect(A, x + 3, top + 10, w - 6, 18, '#1c1830');
+    for (let k = 0; k < w; k += 4) {
+      rect(A, x + k, top, 4, 8, (k >> 2) & 1 ? stripe : C.paper3);
+      rect(A, x + k, top + 8, 4, 2 - ((k >> 2) & 1), (k >> 2) & 1 ? stripe : C.paper3);
+    }
+    rect(A, x, fy - 13, w, 13, C.wood2);
+    rect(A, x, fy - 13, w, 2, C.wood4);
+    for (let k = 4; k < w - 3; k += 5) rect(A, x + k, fy - 9, 1, 8, C.wood1);
+    // Lots : ballons ou peluches, et une ampoule nue.
+    for (let k = 0; k < Math.floor((w - 10) / 8); k++) {
+      const lx = x + 6 + k * 8;
+      rect(A, lx, top + 14 + (k & 1) * 3, 4, 5, [C.lamp1, '#ff7a9a', '#7ad8ff'][(k + v) % 3]);
+      px(A, lx + 1, top + 13 + (k & 1) * 3, C.iron1);
+    }
+    rect(Em, x + (w >> 1) - 1, top + 11, 2, 2, C.lamp4);
+    out.lights.push({ x: x + w / 2, y: top + 14, r: 56, color: C.lamp2, intensity: 0.75, flicker: seedCounter++, shadows: false, halo: 0.6 });
+  },
+
+  /** Grand miroir au mur (décor) : cadre doré, reflet froid. */
+  mirror(d, level, A, Em) {
+    const x = cellX(d) + 1, y = cellY(d) + 2;
+    const w = 14, h = (d.rows ?? 3) * TILE - 6;
+    rect(A, x - 2, y - 2, w + 4, h + 4, C.brass);
+    rect(A, x - 2, y - 2, w + 4, 1, C.paper3);
+    rect(A, x + (w >> 1) - 3, y - 5, 6, 3, C.brass);
+    rect(A, x, y, w, h, '#1c2444');
+    rect(Em, x, y, w, h, '#060814');
+    for (let k = 0; k < h - 2; k += 2) {
+      const sx = x + 2 + Math.round(k * 0.3);
+      if (sx < x + w - 3) rect(Em, sx, y + 1 + k, 2, 1, '#243058');
+    }
+  },
+
+  // --- Chapitre 8 : l'observatoire ---------------------------------------------------
+  /** Lunette astronomique sur son pied : tube de laiton pointé vers le ciel. Posée au bas de sa case. */
+  telescope(d, level, A, Em, out) {
+    const x = cellX(d), fy = cellY(d) + TILE;
+    // Trépied.
+    for (let k = 0; k < 22; k++) {
+      px(A, x + 22 - Math.round(k * 0.45), fy - 22 + k, C.wood1);
+      px(A, x + 24 + Math.round(k * 0.45), fy - 22 + k, C.wood1);
+    }
+    rect(A, x + 23, fy - 24, 2, 24, C.wood2);
+    rect(A, x + 20, fy - 27, 8, 4, C.iron1);
+    // Tube, en biais (de bas-gauche à haut-droite).
+    for (let k = -18; k <= 22; k++) {
+      const cx = x + 24 + k, cy = fy - 27 - Math.round(k * 0.62);
+      const thick = k > 14 ? 4 : 3;
+      rect(A, cx, cy - thick, 1, thick * 2, k % 10 === 0 ? '#8a6a34' : C.brass);
+      px(A, cx, cy - thick, C.paper3);
+    }
+    rect(A, x + 3, fy - 17, 4, 5, C.iron1);
+    px(Em, x + 4, fy - 15, C.moon1);
+    out.lights.push({ x: x + 46, y: fy - 42, r: 40, color: C.moon0, intensity: 0.25, flicker: 0, shadows: false, halo: 0.2 });
+  },
+
+  /** Carte du ciel accrochée au mur : constellations, cercles gradués. */
+  starchart(d, level, A, Em) {
+    const x = cellX(d) + 1, y = cellY(d) + 2;
+    const w = (d.cols ?? 3) * TILE - 2, h = (d.rows ?? 2) * TILE - 4;
+    rect(A, x - 1, y - 1, w + 2, h + 2, C.wood2);
+    rect(A, x, y, w, h, '#16203c');
+    const cx = x + (w >> 1), cy = y + (h >> 1), R = Math.min(w, h) / 2 - 2;
+    for (let a = 0; a < 360; a += 6) {
+      const rad = (a * Math.PI) / 180;
+      px(A, Math.round(cx + Math.cos(rad) * R), Math.round(cy + Math.sin(rad) * R), '#4a5a8a');
+      if (a % 12 === 0) px(A, Math.round(cx + Math.cos(rad) * R * 0.55), Math.round(cy + Math.sin(rad) * R * 0.55), '#2e3a66');
+    }
+    const pts = [[-0.5, -0.3], [-0.2, -0.5], [0.1, -0.2], [0.4, -0.4], [0.5, 0.1], [0.1, 0.3], [-0.3, 0.4], [-0.6, 0.1]];
+    pts.forEach(([ax, ay], i) => {
+      const sx = Math.round(cx + ax * R * 1.4), sy = Math.round(cy + ay * R * 1.3);
+      if (sx <= x || sx >= x + w - 1 || sy <= y || sy >= y + h - 1) return;
+      px(Em, sx, sy, i % 3 ? C.moon0 : C.moon2);
+      if (i % 2) px(A, sx + 1, sy + 1, '#3a4a7a');
+    });
+  },
+
+  /** Planétaire suspendu au plafond : un soleil de laiton, des planètes sur leurs cercles. */
+  orrery(d, level, A, Em, out) {
+    const cx = cellX(d) + 8, y = cellY(d);
+    const top = LEVEL_Y + (ceilingRowAbove(level, d.col, d.row - 1) + 1) * TILE;
+    rect(A, cx, top, 1, y + 12 - top, C.iron1);
+    const cy = y + 16;
+    for (const [R, tint, ang] of [[9, '#7ad8ff', 0.6], [15, '#ff9a8a', 2.4], [22, C.paper3, 4.1]]) {
+      for (let a = 0; a < 360; a += 5) {
+        const rad = (a * Math.PI) / 180;
+        px(A, Math.round(cx + Math.cos(rad) * R), Math.round(cy + Math.sin(rad) * R * 0.34), '#6e5a34');
+      }
+      const px0 = Math.round(cx + Math.cos(ang) * R), py0 = Math.round(cy + Math.sin(ang) * R * 0.34);
+      rect(A, px0 - 1, py0 - 1, 3, 3, tint);
+      px(Em, px0, py0, tint);
+    }
+    rect(A, cx - 2, cy - 2, 5, 5, C.brass);
+    rect(Em, cx - 1, cy - 1, 3, 3, C.lamp3);
+    out.lights.push({ x: cx, y: cy, r: 46, color: C.lamp2, intensity: 0.5, flicker: 0, shadows: false, halo: 0.6 });
   },
 
   /** Locomotive à vapeur exposée (devant les murs : `"layer": "front"`). */

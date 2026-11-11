@@ -14,4 +14,7 @@ export const CHAPTERS = {
   4: { title: 'Le musée' },
   5: { title: 'Le train de nuit' },
   6: { title: 'La mer' },
+  7: { title: 'La fête foraine' },
+  8: { title: 'L’observatoire' },
+  9: { title: 'Le retour' },
 };

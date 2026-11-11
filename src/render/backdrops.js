@@ -330,15 +330,196 @@ export function paintTerminus(level, A, Em, lights, theme, B) {
     rect(A, x - 3, y - 3, w + 6, h + 6, C.stone2);
     rect(A, x, y, w, h, C.ink);
     // Le verre ne s'éclaire que par l'émissif : ciel de nuit, mer sombre, chemin de lune.
-    rect(Em, x, y, w, h * 0.55, C.night1);
+    rect(Em, x, y, w, h * 0.55, '#080b1a');
     for (let k = 0; k < 9; k++) px(Em, x + ((k * 23 + 7) % w), y + 3 + ((k * 11) % 26), C.moon0);
-    rect(Em, x, y + h * 0.55, w, h * 0.45, '#0b1330');
-    rect(Em, x, y + h * 0.55, w, 1, '#2a3a70');
+    rect(Em, x, y + h * 0.55, w, h * 0.45, '#050814');
+    rect(Em, x, y + h * 0.55, w, 1, '#1a2448');
     for (let k = 0; k < 7; k++) rect(Em, x + 44 - k + ((k * 5) % 3), y + h * 0.55 + 3 + k * 4, 3 + k, 1, k < 3 ? C.moon0 : '#5a6ea8');
     // Meneaux : ils masquent aussi la lueur du verre.
     for (const [ctx, col] of [[A, C.iron1], [Em, '#000']]) {
       rect(ctx, x + w / 2 - 1, y, 2, h, col);
       rect(ctx, x, y + 20, w, 1, col);
     }
+  }
+}
+
+// --- Chapitres 7 à 9 -----------------------------------------------------------
+
+/** La fête foraine : ciel de nuit, mer basse, chapiteaux et lampions au loin. */
+export function paintFair(level, A, Em, lights, theme, B) {
+  const r = rng(83);
+  skyBands(A, B, [C.night2, C.night3, '#3a3a78', '#5a4a8a']);
+  stars(Em, B, r, VIEW_H * 0.5, 60);
+  moon(Em, lights, Math.round(VIEW_W * 0.86), Math.round(VIEW_H * 0.14), 6);
+  const horizon = Math.round(VIEW_H * 0.72);
+  rect(A, B.x0, horizon, B.w, B.y1 - horizon, '#1a2250');
+  for (let y = horizon + 2; y < B.y1; y += 3) {
+    for (let x = B.x0 + ((y * 7) % 13); x < B.x1; x += 13) rect(A, x, y, 4, 1, '#26306a');
+  }
+  // Chapiteaux rayés au loin, et leurs lampions (flous de couleur).
+  const tints = [C.lamp1, '#ff7a9a', '#7ad8ff', C.lamp3, '#b08aff'];
+  for (let x = B.x0 - (((B.x0 % 74) + 74) % 74) + 10; x < B.x1; x += 74) {
+    const w = 34 + ((x * 3) % 14), h = 20 + ((x * 5) % 12);
+    for (let k = 0; k < h; k++) {
+      const half = Math.round((w / 2) * (k / h));
+      rect(A, x + w / 2 - half, horizon - h + k, half * 2, 1, ((x + k) >> 2) & 1 ? '#2a2254' : '#3a2a5e');
+    }
+    rect(A, x, horizon, w, 6, '#241c48');
+    px(A, x + w / 2, horizon - h - 1, C.night5);
+    for (let k = 0; k < 5; k++) {
+      const lx = x + 3 + k * ((w - 6) / 4), ly = horizon - 2 + ((k * 3) % 2);
+      px(Em, Math.round(lx), ly, tints[(k + (x >> 3)) % tints.length]);
+    }
+  }
+  // Reflets des lampions sur l'eau.
+  for (let i = 0; i < Math.round(B.w / 9); i++) {
+    const x = Math.floor(B.x0 + r() * B.w), y = horizon + 3 + Math.floor(r() * 26);
+    rect(Em, x, y, 2, 1, tints[i % tints.length]);
+  }
+}
+
+/** Le palais des glaces : velours prune, grands miroirs où passe un reflet froid. */
+export function paintMirrorHall(level, A, Em, lights, theme, B) {
+  rect(A, B.x0, B.y0, B.w, B.h, '#3a2648');
+  for (let x = B.x0 - (((B.x0 % 6) + 6) % 6); x < B.x1; x += 6) rect(A, x, B.y0, 1, B.h, '#32203e');
+  const R = cellRange(B);
+  // Glaces en pied entre deux pilastres dorés, là où le mur est dégagé.
+  for (let c = R.c0 - (((R.c0 % 3) + 3) % 3); c < R.c1; c += 3) {
+    for (let r = R.r0; r < R.r1; r++) {
+      if (solidAt(level, c, r) || solidAt(level, c + 1, r) || !solidAt(level, c, r + 1)) continue;
+      // Hauteur libre au-dessus de ce sol (au plus 4 cases).
+      let hh = 1;
+      while (hh < 4 && !solidAt(level, c, r - hh) && !solidAt(level, c + 1, r - hh)) hh++;
+      if (hh < 2) continue;
+      const x = c * TILE + 3, y = LEVEL_Y + (r - hh + 1) * TILE + 5;
+      const w = 26, h = hh * TILE - 9;
+      rect(A, x - 2, y - 2, w + 4, h + 4, C.brass);
+      rect(A, x - 2, y - 2, w + 4, 1, C.paper3);
+      rect(A, x, y, w, h, '#1c2444');
+      // (Peu d'émissif : le halo amplifie vite les grandes surfaces.)
+      rect(Em, x, y, w, h, '#05070f');
+      for (let k = 0; k < h; k += 2) {
+        const sx = x + 4 + Math.round(k * 0.35);
+        if (sx < x + w - 3) rect(Em, sx, y + k, 2, 1, '#1c2648');
+        if (sx + 8 < x + w - 1) px(Em, sx + 8, y + k, '#141c38');
+      }
+      rect(A, x - 3, y + h + 2, w + 6, 2, C.wood1);
+    }
+  }
+  for (let r = R.r0; r < R.r1; r++) {
+    for (let c = R.c0; c < R.c1; c++) {
+      if (solidAt(level, c, r)) continue;
+      const x = c * TILE, y = LEVEL_Y + r * TILE;
+      if (solidAt(level, c, r - 1)) {
+        // Lambrequin de velours à franges dorées.
+        rect(A, x, y, TILE, 4, '#6e2630');
+        for (let k = 0; k < TILE; k += 4) { rect(A, x + k, y + 4, 3, 2, '#6e2630'); px(A, x + k + 1, y + 6, C.brass); }
+      }
+    }
+  }
+}
+
+/** La colline : la Voie lactée en travers du ciel, des crêtes, la coupole au loin. */
+export function paintHill(level, A, Em, lights, theme, B) {
+  const r = rng(97);
+  skyBands(A, B, [C.night1, C.night2, C.night3, '#2c3a70']);
+  stars(Em, B, r, VIEW_H * 0.8, 110);
+  // La Voie lactée : une traînée dense, en biais.
+  const n = Math.round((B.w * 2.2));
+  for (let i = 0; i < n; i++) {
+    const x = B.x0 + r() * B.w;
+    const mid = VIEW_H * 0.62 - (x - B.x0 + (B.x0 % 400)) * 0.32;
+    const spread = (r() + r() + r() - 1.5) * 26;
+    const y = Math.round(mid + spread);
+    if (y < B.y0 || y > VIEW_H * 0.8) continue;
+    const b = r();
+    px(Em, Math.round(x), y, b > 0.9 ? C.moon2 : b > 0.55 ? C.moon0 : '#4a5a94');
+  }
+  // Crêtes lointaines, et la coupole de l'observatoire.
+  const top = (x) => Math.round(VIEW_H * 0.8 + 7 * Math.sin(x / 41) + 4 * Math.sin(x / 13 + 2));
+  for (let x = B.x0; x < B.x1; x++) rect(A, x, top(x), 1, B.y1 - top(x), '#0e1430');
+  const dx = Math.round(VIEW_W * 0.78), dy = top(dx) + 2;
+  for (let k = -14; k <= 14; k++) {
+    const h = Math.round(Math.sqrt(196 - k * k));
+    rect(A, dx + k, dy - 8 - h, 1, h + 8, '#161e40');
+  }
+  rect(A, dx - 2, dy - 22, 3, 12, '#0a0e24');
+  px(Em, dx - 9, dy - 3, C.lamp1);
+  lights.push({ x: dx, y: dy - 20, r: 60, color: C.moon0, intensity: 0.12, flicker: 0, shadows: false, halo: 0 });
+}
+
+/** Sous la coupole : tôles sombres, nervures de laiton, la fente ouverte sur le ciel. */
+export function paintDome(level, A, Em, lights, theme, B) {
+  const r = rng(101);
+  rect(A, B.x0, B.y0, B.w, B.h, '#2c3450');
+  sparse(A, B.x0, B.y0, B.w, B.h, '#262d46');
+  // Tôles : joints horizontaux, rivets.
+  for (let y = B.y0 - (((B.y0 % 24) + 24) % 24); y < B.y1; y += 24) {
+    rect(A, B.x0, y, B.w, 1, '#1e2438');
+    for (let x = B.x0 - (((B.x0 % 12) + 12) % 12) + ((y / 24) & 1 ? 6 : 0); x < B.x1; x += 12) px(A, x, y + 2, '#465070');
+  }
+  // Nervures de laiton, régulières.
+  for (let x = B.x0 - (((B.x0 % 64) + 64) % 64) + 30; x < B.x1; x += 64) {
+    rect(A, x, B.y0, 3, B.h, '#6e5a34');
+    rect(A, x, B.y0, 1, B.h, C.brass);
+  }
+  // La fente de la coupole : une bande de ciel, en haut de la scène.
+  const sx = Math.round(VIEW_W * 0.5) - 26, sy = B.y0, sw = 52, sh = Math.round(VIEW_H * 0.2) - B.y0;
+  if (sh > 0) {
+    rect(A, sx - 2, sy, sw + 4, sh + 2, C.iron1);
+    rect(A, sx, sy, sw, sh, C.ink);
+    rect(Em, sx, sy, sw, sh, C.night1);
+    for (let i = 0; i < 26; i++) px(Em, sx + 1 + Math.floor(r() * (sw - 2)), sy + Math.floor(r() * sh), r() > 0.6 ? C.moon2 : C.moon0);
+    lights.push({ x: sx + sw / 2, y: sy + sh, r: 90, color: C.moon0, intensity: 0.25, flicker: 0, shadows: false, halo: 0 });
+  }
+  const R = cellRange(B);
+  for (let rr = R.r0; rr < R.r1; rr++) {
+    for (let c = R.c0; c < R.c1; c++) {
+      if (solidAt(level, c, rr) || !solidAt(level, c, rr + 1)) continue;
+      const x = c * TILE, y = LEVEL_Y + rr * TILE;
+      rect(A, x, y + 10, TILE, 6, '#222840');
+      rect(A, x, y + 9, TILE, 1, C.brass);
+    }
+  }
+}
+
+/** La première gare, à l'aube : ciel du bleu au rose, soleil au ras des toits. */
+export function paintDawn(level, A, Em, lights, theme, B) {
+  const r = rng(113);
+  skyBands(A, B, ['#3a4486', '#6a5a9c', '#b0709a', '#e89a86', '#ffc890']);
+  // Dernières étoiles, tout en haut.
+  const count = Math.round((14 * B.w) / VIEW_W);
+  for (let i = 0; i < count; i++) px(Em, Math.floor(B.x0 + r() * B.w), Math.floor(B.y0 + r() * (VIEW_H * 0.22 - B.y0)), C.moon0);
+  // Voiles de nuages roses.
+  for (const [cx, cy, w] of [[70, 0.3, 90], [250, 0.22, 120], [390, 0.36, 80], [170, 0.44, 70]]) {
+    const y = Math.round(VIEW_H * cy);
+    sparse(A, cx - w / 2, y, w, 3, '#ffb8a8', 1);
+    rect(A, cx - w / 4, y + 1, w / 2, 1, '#ffd0b0');
+  }
+  // Le soleil, à demi levé derrière la ville.
+  const base = Math.round(VIEW_H * 0.72);
+  const sx = Math.round(VIEW_W * 0.24);
+  for (let y = -12; y <= 0; y++) {
+    const half = Math.round(Math.sqrt(144 - y * y));
+    rect(Em, sx - half, base + y, half * 2, 1, y > -4 ? '#ffb070' : '#ffd8a0');
+  }
+  lights.push({ x: sx, y: base - 4, r: 260, color: '#ffb880', intensity: 0.5, flicker: 0, shadows: false, halo: 0.5 });
+  lights.push({ x: sx, y: base - 4, r: 520, color: '#ffc8a0', intensity: 0.22, flicker: 0, shadows: false, halo: 0 });
+  // Collines, puis la ville qui dort : silhouettes, quelques fenêtres déjà allumées.
+  const hill = (x) => base - 6 + Math.round(5 * Math.sin(x / 27) + 3 * Math.sin(x / 11 + 1));
+  for (let x = B.x0; x < B.x1; x++) {
+    rect(A, x, hill(x), 1, B.y1 - hill(x), '#6a4a78');
+    rect(Em, x, hill(x), 1, B.y1 - hill(x), '#000'); // le soleil reste derrière
+  }
+  let x = B.x0 - (((B.x0 % 9) + 9) % 9);
+  while (x < B.x1) {
+    const w = 7 + Math.floor(r() * 10), h = 8 + Math.floor(r() * 18);
+    rect(A, x, base + 8 - h, w, h + 60, '#3e305e');
+    rect(Em, x, base + 8 - h, w, h + 60, '#000');
+    rect(A, x, base + 8 - h, w, 1, '#8a5a80');
+    for (let wy = base + 10 - h; wy < base + 6; wy += 3) {
+      for (let wx = x + 1; wx < x + w - 1; wx += 2) if (r() < 0.08) px(Em, wx, wy, C.lamp2);
+    }
+    x += w + 1 + Math.floor(r() * 5);
   }
 }

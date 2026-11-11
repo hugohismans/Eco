@@ -3,7 +3,10 @@
 // pluie, vent) et le paysage qui défile derrière les fenêtres du train.
 // Tout est dessiné dans le repère de la scène (P : albedo, E : émissif).
 
-import { TILE, SUB, GRID_W, GRID_H, T_CONV_L, T_CONV_R, T_GHOST, T_GLASS, CRUMBLE_TICKS } from '../sim/constants.js';
+import {
+  TILE, SUB, GRID_W, GRID_H, T_CONV_L, T_CONV_R, T_GHOST, T_GLASS, CRUMBLE_TICKS,
+  T_GATE_R, T_GATE_L, T_MIRROR_A, T_MIRROR_B, ACTOR_W, ACTOR_H,
+} from '../sim/constants.js';
 import { C } from './palette.js';
 import { rect, px, makeCanvas } from './pixel.js';
 import { LEVEL_Y } from './screen.js';
@@ -13,13 +16,15 @@ const cellsCache = new WeakMap();
 function specialCells(level) {
   let c = cellsCache.get(level);
   if (c) return c;
-  c = { conv: [], ghost: [], glass: [] };
+  c = { conv: [], ghost: [], glass: [], gates: [], mirrors: [] };
   for (let r = 0; r < GRID_H; r++) {
     for (let col = 0; col < GRID_W; col++) {
       const t = level.tiles[r * GRID_W + col];
       if (t === T_CONV_L || t === T_CONV_R) c.conv.push({ col, row: r, dir: t === T_CONV_L ? -1 : 1 });
       else if (t === T_GHOST) c.ghost.push({ col, row: r });
       else if (t === T_GLASS) c.glass.push({ col, row: r });
+      else if (t === T_GATE_R || t === T_GATE_L) c.gates.push({ col, row: r, dir: t === T_GATE_R ? 1 : -1 });
+      else if (t === T_MIRROR_A || t === T_MIRROR_B) c.mirrors.push({ col, row: r });
     }
   }
   cellsCache.set(level, c);
@@ -28,8 +33,117 @@ function specialCells(level) {
 
 const hash = (i) => (((i * 2654435761) >>> 0) % 10007) / 10007;
 
-export function drawElements(P, E, world, lights, t) {
+export function drawElements(P, E, world, lights, t, spawn = null) {
   const cells = specialCells(world.level);
+
+  // Départ des échos : une psyché, d'où sortent les reflets.
+  const q = world.level.echoSpawn;
+  if (q) {
+    const x = q.x / SUB - 3, y = q.y / SUB + LEVEL_Y - 5;
+    const w = ACTOR_W / SUB + 6, h = ACTOR_H / SUB + 5;
+    rect(P, x - 1, y - 1, w + 2, h + 1, C.brass);
+    rect(P, x - 1, y - 1, w + 2, 1, C.paper3);
+    rect(P, x + (w >> 1) - 2, y - 4, 4, 3, C.brass);
+    rect(P, x, y, w, h, '#182040');
+    E.globalAlpha = 0.5 + 0.12 * Math.sin(t * 1.7);
+    rect(E, x, y, w, h, '#0c1226');
+    for (let k = 0; k < h - 2; k += 2) {
+      const sx = x + 1 + ((k * 3 + Math.floor(t * 6)) % (w - 2));
+      px(E, sx, y + 1 + k, '#6a84c8');
+    }
+    E.globalAlpha = 1;
+    lights.push({ x: x + w / 2, y: y + h / 2, r: 30, color: '#8fa6d8', intensity: 0.35, flicker: 0, shadows: false, halo: 0.4 });
+  }
+
+  // Relais : une dalle de laiton ; elle s'allume quand on s'y tient, et reste
+  // marquée si c'est de là que l'on part désormais.
+  for (const rl of world.relays) {
+    const x = rl.col * TILE, y = LEVEL_Y + rl.row * TILE;
+    const here = !!spawn && spawn.x === rl.spawn.x && spawn.y === rl.spawn.y;
+    rect(P, x + 1, y + 14, 14, 2, C.brass);
+    rect(P, x + 1, y + 14, 14, 1, C.paper3);
+    rect(P, x + 2, y + 15, 12, 1, C.wood1);
+    const col = rl.active ? C.lamp4 : here ? C.lamp2 : '#6a5428';
+    // Une petite borne à lanterne, pour qu'on le remarque de loin.
+    rect(P, x + 1, y + 5, 2, 9, C.iron1);
+    rect(P, x, y + 3, 4, 3, C.iron2);
+    rect(E, x + 1, y + 4, 2, 1, col);
+    // Deux chevrons : « d'ici ».
+    for (const k of [5, 9]) { px(E, x + k, y + 13, col); px(E, x + k + 1, y + 12, col); px(E, x + k + 2, y + 13, col); }
+    if (rl.active || here) {
+      const a = rl.active ? 1 : 0.5;
+      for (let i = 0; i < 5; i++) {
+        const k = (t * (0.6 + hash(i + 3) * 0.6) + hash(i * 7)) % 1;
+        E.globalAlpha = (1 - k) * 0.8 * a;
+        px(E, x + 3 + Math.floor(hash(i * 11 + 1) * 10), Math.round(y + 12 - k * 22), C.lamp3);
+      }
+      E.globalAlpha = 1;
+      lights.push({ x: x + 8, y: y + 10, r: rl.active ? 44 : 28, color: C.lamp2, intensity: 0.6 * a, flicker: 0, shadows: false, halo: 0.7 });
+    }
+  }
+
+  // Tourniquets : un fût de laiton, des bras, et des chevrons qui disent le sens.
+  for (const { col, row, dir } of cells.gates) {
+    const x = col * TILE, y = LEVEL_Y + row * TILE;
+    rect(P, x + 7, y, 2, TILE, C.brass);
+    rect(P, x + 7, y, 1, TILE, C.paper3);
+    for (const ky of [3, 11]) {
+      rect(P, x + 2, y + ky, 12, 1, C.iron2);
+      rect(P, x + (dir > 0 ? 2 : 12), y + ky - 1, 2, 3, C.iron2);
+    }
+    const off = Math.floor(t * 10) % 5;
+    for (let k = 0; k < 2; k++) {
+      const cx = x + 8 + dir * (((off + k * 5) % 10) - 5);
+      if (cx < x + 1 || cx > x + TILE - 3) continue;
+      E.globalAlpha = 0.75;
+      px(E, cx, y + 6, C.signalGreen); px(E, cx + dir, y + 7, C.signalGreen); px(E, cx, y + 8, C.signalGreen);
+    }
+    E.globalAlpha = 1;
+    // Le mauvais côté : un point rouge.
+    px(E, x + (dir > 0 ? 14 : 1), y + 7, C.signalRed);
+  }
+
+  // Miroirs : une lame d'argent en diagonale ; pivot de laiton s'il tourne.
+  for (const { col, row } of cells.mirrors) {
+    const x = col * TILE, y = LEVEL_Y + row * TILE;
+    const slash = world.mirrorType(col, row) === T_MIRROR_A;
+    const pivot = world.mirrorAt.get(row * GRID_W + col);
+    for (let k = 2; k < TILE - 2; k++) {
+      const yy = slash ? y + TILE - 1 - k : y + k;
+      px(P, x + k, yy, C.stone4);
+      px(P, x + k, yy + 1, C.stone1);
+      E.globalAlpha = 0.55 + 0.25 * Math.sin(t * 2 + k * 0.6);
+      px(E, x + k, yy, C.moon2);
+    }
+    E.globalAlpha = 1;
+    if (pivot) {
+      rect(P, x + 6, y + 6, 4, 4, C.brass);
+      rect(E, x + 7, y + 7, 2, 2, pivot.flipped ? C.signalGreen : C.lamp1);
+    }
+  }
+
+  // Récepteurs : une lentille, éteinte ou pleine de lumière.
+  for (const rc of world.receivers) {
+    const cx = rc.col * TILE + 8, cy = LEVEL_Y + rc.row * TILE + 8;
+    for (let yy = -4; yy <= 4; yy++) {
+      for (let xx = -4; xx <= 4; xx++) {
+        const d = xx * xx + yy * yy;
+        if (d > 18) continue;
+        px(P, cx + xx, cy + yy, d > 10 ? C.brass : '#101828');
+        if (d <= 10 && rc.pressed) px(E, cx + xx, cy + yy, rc.lit ? (d < 4 ? C.lamp4 : C.lamp2) : C.lamp0);
+      }
+    }
+    if (!rc.pressed) px(E, cx - 1, cy - 1, '#3a4a70');
+    else lights.push({ x: cx, y: cy, r: 40, color: C.lamp2, intensity: rc.lit ? 0.8 : 0.4, flicker: 0, shadows: false, halo: 0.8 });
+    // Rémanence : un anneau qui se vide.
+    if (rc.hold > 0 && rc.pressed && !rc.lit) {
+      const n = Math.ceil((12 * rc.timer) / rc.hold);
+      for (let i = 0; i < n; i++) {
+        const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+        px(E, Math.round(cx + Math.cos(a) * 6), Math.round(cy + Math.sin(a) * 6), C.lamp3);
+      }
+    }
+  }
 
   // Courants d'air : des filets qui filent dans le sens de la rafale ; juste
   // avant qu'elle reprenne, quelques-uns la devancent.

@@ -9,10 +9,12 @@
 
 import {
   GRID_W, GRID_H, TILE, T_SOLID, T_ONEWAY, T_ICE, T_CONV_L, T_CONV_R, T_GHOST, T_GLASS,
+  T_MIRROR_A, T_MIRROR_B, T_RECEIVER,
 } from '../sim/constants.js';
 import {
   paintMountains, paintChalet, paintCity, paintStreet, paintMuseum, paintStorage, paintHall,
   paintWagon, paintTrainRoof, paintSea, paintTerminus,
+  paintFair, paintMirrorHall, paintHill, paintDome, paintDawn,
 } from './backdrops.js';
 import { C } from './palette.js';
 import { rect, px, checker, sparse, rng } from './pixel.js';
@@ -30,7 +32,7 @@ export function drawTileAt(level, col, row) {
 }
 
 /** Cases « pleines » pour le dessin (bords, ombres, lambris). */
-const MASSIVE = new Set([T_SOLID, T_ICE, T_CONV_L, T_CONV_R]);
+const MASSIVE = new Set([T_SOLID, T_ICE, T_CONV_L, T_CONV_R, T_MIRROR_A, T_MIRROR_B, T_RECEIVER]);
 export const solidAt = (level, c, r) => MASSIVE.has(drawTileAt(level, c, r));
 
 /** Cases (rangées, colonnes) couvrant la zone à peindre, avec une marge. */
@@ -184,6 +186,38 @@ Object.assign(THEMES, {
   /** Le terminus au bord de la mer : verrière, grandes baies. */
   terminus: {
     ambient: '#55609c', fog: null, tiles: 'stone', wet: true, weather: null, backdrop: paintTerminus,
+  },
+});
+
+// --- Chapitres 7 à 9 --------------------------------------------------------
+Object.assign(THEMES, {
+  /** La fête foraine, sur la jetée : planches, guirlandes, la mer derrière. */
+  foire: {
+    ambient: '#544c90', fog: { color: '#ff9a8a', alpha: 0.06 }, tiles: 'wood', wet: false,
+    weather: null, backdrop: paintFair,
+  },
+  /** Le palais des glaces : velours sombre, grands miroirs, dorures. */
+  glaces: {
+    ambient: '#4a4688', fog: null, tiles: 'marble', wet: true, weather: null, backdrop: paintMirrorHall,
+  },
+  /** La colline de l'observatoire : la Voie lactée, la roche, l'herbe rase. */
+  colline: {
+    ambient: '#4e5a9c', fog: { color: '#8fa6d8', alpha: 0.08 }, tiles: 'rock', wet: false,
+    weather: null, backdrop: paintHill,
+  },
+  /** Sous la coupole : tôles rivetées, laiton, la fente ouverte sur les étoiles. */
+  coupole: {
+    ambient: '#40487e', fog: null, tiles: 'metal', wet: false, weather: null, backdrop: paintDome,
+  },
+  /** La première gare, à l'aube : le quai sous un ciel rose. */
+  aube: {
+    ambient: '#9a86ac', fog: { color: '#ffc8a8', alpha: 0.16 }, tiles: 'stone', wet: true,
+    weather: null, backdrop: paintDawn, dawn: true,
+  },
+  /** Le hall au petit matin : le soleil entre par les vitres. */
+  matin: {
+    ambient: '#8c7a94', fog: null, tiles: 'brick', wet: true, backdrop: paintInterior,
+    wall: '#a08468', wallDark: '#8a6f58', pilasters: true, dawn: true,
   },
 });
 
@@ -369,6 +403,7 @@ export function paintTiles(level, theme, A, B = SCENE) {
         else if (style === 'roof') paintRoof(level, A, c, r, x, y);
         else if (style === 'marble') paintMarble(level, A, c, r, x, y);
         else if (style === 'rock') paintRock(level, A, c, r, x, y);
+        else if (style === 'metal') paintMetal(level, A, c, r, x, y);
         else paintBrick(level, A, c, r, x, y);
       } else if (t === T_ONEWAY) {
         paintPlank(A, x, y);
@@ -378,6 +413,8 @@ export function paintTiles(level, theme, A, B = SCENE) {
         paintConveyor(A, x, y);
       } else if (t === T_GHOST) {
         paintGhostFrame(level, A, c, r, x, y);
+      } else if (t === T_MIRROR_A || t === T_MIRROR_B || t === T_RECEIVER) {
+        paintInstrument(A, x, y);
       }
     }
   }
@@ -567,6 +604,32 @@ function paintRock(level, A, c, r, x, y) {
   }
   if (!solidAt(level, c - 1, r)) rect(A, x, y, 1, TILE, '#1c2030');
   if (!solidAt(level, c + 1, r)) rect(A, x + TILE - 1, y, 1, TILE, '#1c2030');
+}
+
+/** Tôles rivetées de l'observatoire, filet de laiton sur le dessus. */
+function paintMetal(level, A, c, r, x, y) {
+  rect(A, x, y, TILE, TILE, '#3a4258');
+  rect(A, x, y + TILE - 1, TILE, 1, '#2a3044');
+  rect(A, x + (((r & 1) ? 8 : 0)), y, 1, TILE, '#2a3044');
+  for (const [dx, dy] of [[3, 3], [12, 3], [3, 12], [12, 12]]) px(A, x + dx, y + dy, '#5a6480');
+  if (!solidAt(level, c, r - 1)) {
+    rect(A, x, y, TILE, 3, '#56607c');
+    rect(A, x, y, TILE, 1, C.brass);
+    rect(A, x, y + 3, TILE, 1, '#2a3044');
+  }
+  if (!solidAt(level, c - 1, r)) rect(A, x, y, 1, TILE, '#242a3c');
+  if (!solidAt(level, c + 1, r)) rect(A, x + TILE - 1, y, 1, TILE, '#242a3c');
+}
+
+/** Boîtier d'un instrument d'optique (miroir, récepteur) : fonte et laiton. */
+function paintInstrument(A, x, y) {
+  rect(A, x, y, TILE, TILE, C.iron1);
+  rect(A, x, y, TILE, 1, C.brass);
+  rect(A, x, y + TILE - 1, TILE, 1, C.iron0);
+  rect(A, x, y, 1, TILE, C.iron2);
+  rect(A, x + TILE - 1, y, 1, TILE, C.iron0);
+  rect(A, x + 2, y + 2, TILE - 4, TILE - 4, C.iron0);
+  for (const [dx, dy] of [[1, 1], [14, 1], [1, 14], [14, 14]]) px(A, x + dx, y + dy, C.brass);
 }
 
 function paintMarble(level, A, c, r, x, y) {

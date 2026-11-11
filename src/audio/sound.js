@@ -35,6 +35,13 @@ const AMBIENCE = {
   // Chapitre 6 : la mer.
   mer: { hum: 0.002, wind: 0.09, reverb: 0.16 },
   terminus: { hum: 0.012, wind: 0.04, reverb: 0.5 },
+  // Chapitres 7 à 9.
+  foire: { hum: 0.01, wind: 0.05, reverb: 0.14 },
+  glaces: { hum: 0.014, wind: 0.004, reverb: 0.6 },
+  colline: { hum: 0.002, wind: 0.07, reverb: 0.08 },
+  coupole: { hum: 0.02, wind: 0.01, reverb: 0.65 },
+  aube: { hum: 0.004, wind: 0.04, reverb: 0.16 },
+  matin: { hum: 0.012, wind: 0.008, reverb: 0.4 },
 };
 
 export class Sound {
@@ -318,6 +325,22 @@ export class Sound {
         break;
       case 'sensor-on':
         this.tone({ type: 'sine', f: 1320, dur: 0.05, gain: 0.025 * v, wet: 0.2 });
+        break;
+      case 'mirror':
+        // Un miroir pivote : déclic, tintement de verre.
+        this.noise({ type: 'lowpass', f: 700, dur: 0.05, gain: 0.08, wet: 0.3 });
+        this.tone({ type: 'sine', f: 1760, to: 2100, dur: 0.18, gain: 0.03, wet: 0.7 });
+        break;
+      case 'receiver-on':
+        this.tone({ type: 'triangle', f: 660, to: 990, dur: 0.22, gain: 0.04, wet: 0.6 });
+        break;
+      case 'receiver-off':
+        this.tone({ type: 'triangle', f: 700, to: 440, dur: 0.18, gain: 0.03, wet: 0.5 });
+        break;
+      case 'relay':
+        // « Je repartirai d'ici » : deux notes qui montent, comme un composteur.
+        this.noise({ type: 'lowpass', f: 900, dur: 0.04, gain: 0.1, wet: 0.2 });
+        [392, 587.33].forEach((f, i) => this.tone({ type: 'triangle', f, dur: 0.4, gain: 0.05, delay: 0.05 + i * 0.12, wet: 0.6 }));
         break;
       case 'erase':
         // Un écho pris dans la lampe : un souffle clair qui s'éteint.
