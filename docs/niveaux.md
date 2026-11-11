@@ -324,23 +324,27 @@ tête (il n'est coupé que si l'on saute).
     miroir pivotant : pont vers la gauche, ou pont vers la droite. Le levier est sur
     l'îlot de gauche : celui qui bascule reste de l'autre côté.
 74. **La trappe de lumière** (`trappe`, coupole). La sortie est SOUS le pont de
-    lumière, au milieu du vide. On s'arrête au-dessus ; l'écho vient se mettre dans le
-    faisceau, en amont : le pont s'efface sous nos pieds.
-75. **L'escalier de lumière** (`escalier-lumiere`, colline). Trois ponts, trois plaques
-    à minuterie, un seul écho : il allume les marches l'une après l'autre, au rythme
-    où l'on monte.
-76. **La persistance** (`persistance`, coupole). Une seule lumière, deux récepteurs à
-    rémanence, une porte qui veut les deux. Un écho resté au levier fait aller et
-    venir le miroir : il jongle.
+    lumière, au milieu du vide. On s'arrête au-dessus ; l'écho, après avoir attendu,
+    marche sur le pont jusqu'au miroir d'angle et s'y tient, sous le rayon : le pont
+    s'efface sous nos pieds.
+75. **L'escalier de lumière** (`escalier-lumiere`, colline, sans capacités). Trois
+    ponts, trois plaques à minuterie, un seul écho : il allume les marches l'une après
+    l'autre, au rythme où l'on monte.
+76. **La persistance** (`persistance`, coupole, sans dash). Une seule lumière, deux
+    récepteurs à rémanence, deux portes à la suite qui veulent les deux. Un écho resté
+    au levier fait aller et venir le miroir : il jongle.
 77. **Le planétaire** (`planetaire`, coupole). Deux miroirs pivotants, un faisceau
     mortel. Lire le trajet de la lumière : la plaque qui la détourne est au milieu du
     feu ; seul un écho peut y aller.
 78. **Le verrou de lumière** (`verrou`, coupole). Une porte que sa propre lumière tient
     ouverte : le faisceau passe par l'ouverture et atteint le récepteur qui l'ouvre.
     Un appui suffit… jusqu'à ce que quelqu'un saute dans le rayon. L'écho, en allant à
-    son poste, le coupe : c'est à nous d'armer le verrou, après son passage.
-79. **La chambre noire** (`chambre-noire`, coupole). L'épreuve : ombre, miroir, pont
-    coupé ; trois échos.
+    son poste, le coupe : c'est à nous d'armer le verrou, après son passage. (Un
+    tourniquet empêche l'écho de revenir tenir la plaque.)
+79. **La chambre noire** (`chambre-noire`, coupole). L'épreuve, trois échos : l'un,
+    lâché dans le faisceau, fait de l'ombre et ouvre la porte ; l'autre tient la plaque
+    qui tourne le miroir (le pont apparaît, la barrière de la cheminée s'éteint) ; le
+    troisième vient couper le rayon pour nous faire tomber dans la sortie.
 80. **La grande lunette** (`grande-lunette`, coupole, sans chrono, fin de chapitre).
     Douce. On aligne deux miroirs ; la lumière d'une étoile ouvre la coupole. En bas,
     le premier train du matin.
