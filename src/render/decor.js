@@ -333,7 +333,9 @@ export const DECOR = {
     rect(A, x - 2, y - 2, w + 4, 38, C.iron1);
     rect(A, x, y, w, 34, C.ink);
     rect(A, x - 2, y - 2, w + 4, 1, C.iron2);
-    const lines = ['DEPARTS', '23:59 DERNIER', '--:-- ------'];
+    // La nuit : le dernier train. Au retour, à l'aube : le premier.
+    const dawn = level.theme === 'aube' || level.theme === 'matin';
+    const lines = dawn ? ['DEPARTS', '06:02 PREMIER', '06:40 ------'] : ['DEPARTS', '23:59 DERNIER', '--:-- ------'];
     lines.forEach((t, i) => {
       Em.drawImage(textSprite(t.slice(0, Math.floor(w / 8) - 1), i === 0 ? C.lamp3 : C.lamp1, null), x + 4, y + 2 + i * 11);
     });
